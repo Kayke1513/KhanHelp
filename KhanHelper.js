@@ -1,25 +1,340 @@
 (()=>{
-if(window.__KH&&document.getElementById('kh'))return;let key=prompt('Cole sua chave da API Groq:');if(!key)return;key=key.trim();
-const M=['openai/gpt-oss-120b','openai/gpt-oss-20b','qwen/qwen3.8-27b'],cd={};
-const box=document.createElement('div');box.id='kh';box.style='position:fixed;right:8px;top:8px;width:min(290px,calc(100vw - 16px));z-index:2147483647;background:#fff;color:#111;border:2px solid #1865f2;border-radius:12px;padding:10px;font:13px Arial;box-shadow:0 4px 18px #0006;max-height:46vh;overflow:auto';
-const top=document.createElement('div');top.innerHTML='<b>📘 Khan Helper</b>';top.style='touch-action:none;user-select:none;cursor:move;padding:4px 2px';
-const x=document.createElement('button');x.textContent='✕';x.style='float:right;border:0;background:#eee;border-radius:6px;padding:3px 8px;font-size:15px';top.appendChild(x);
-const out=document.createElement('div');out.style='margin:9px 0;white-space:pre-wrap;line-height:1.4';const st=document.createElement('div');st.style='font-size:10px;color:#777;margin-bottom:6px';const bt=document.createElement('button');bt.textContent='🔄 Resolver questão';bt.style='width:100%;padding:9px;border:0;border-radius:8px;background:#1865f2;color:#fff;font-weight:bold;font-size:14px';box.append(top,out,st,bt);document.body.appendChild(box);
-let d=0,sx=0,sy=0,bx=0,by=0;top.onpointerdown=e=>{if(e.target===x)return;d=1;let r=box.getBoundingClientRect();sx=e.clientX;sy=e.clientY;bx=r.left;by=r.top;box.style.left=bx+'px';box.style.top=by+'px';box.style.right='auto';top.setPointerCapture?.(e.pointerId)};top.onpointermove=e=>{if(!d)return;box.style.left=Math.max(4,Math.min(bx+e.clientX-sx,innerWidth-box.offsetWidth-4))+'px';box.style.top=Math.max(4,Math.min(by+e.clientY-sy,innerHeight-box.offsetHeight-4))+'px'};top.onpointerup=top.onpointercancel=()=>d=0;
-function q(){let r=document.querySelector('[data-testid="content-library-content-panel"],main,[role="main"]')||document.body,t='';let w=document.createTreeWalker(r,NodeFilter.SHOW_TEXT);while(w.nextNode()){let e=w.currentNode.parentElement;if(!e||e.closest('#kh')||['SCRIPT','STYLE','NOSCRIPT'].includes(e.tagName))continue;try{let c=getComputedStyle(e);if(c.display==='none'||c.visibility==='hidden')continue}catch{}let v=w.currentNode.textContent.replace(/\s+/g,' ').trim();if(v)t+='\n'+v}r.querySelectorAll('[aria-label],[alt],[title],svg text,svg tspan,svg title,svg desc').forEach(e=>{if(e.closest?.('#kh'))return;let v=e.getAttribute?.('aria-label')||e.getAttribute?.('alt')||e.getAttribute?.('title')||e.textContent||'';v=v.replace(/\s+/g,' ').trim();if(v)t+='\n'+v});return t.slice(0,14000)}
-function can(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/√|\\sqrt/g,'sqrt').replace(/,/g,'.').replace(/\s+/g,'').replace(/[^a-z0-9.+\-*/=]/g,'')}
-function alts(t){let L=t.split('\n').map(s=>s.trim()).filter(Boolean),o={};for(let i=0;i<L.length;i++){let m=L[i].match(/^([A-F])$/);if(!m)continue;let a=[];for(let j=i+1;j<L.length&&j<=i+5;j++){if(/^[A-F]$/.test(L[j])||/^(verificar|pular|relatar|dicas|escolha|conferir)/i.test(L[j]))break;a.push(L[j])}if(a.length)o[m[1]]=a.join(' ')}return o}
-function letter(ans,map){let m=String(ans||'').match(/^\s*([A-F])\b/i);if(m)return m[1].toUpperCase();let a=can(ans);if(a.length<2)return'';for(let [k,v] of Object.entries(map)){let b=can(v);if(b.length>1&&(b.includes(a)||a.includes(b)))return k}return''}
-function retrySec(s){let m=String(s||'').match(/try again in\s*(\d+(?:\.\d+)?)s/i);return m?Math.ceil(+m[1]):60}
-async function call(model,p){if(cd[model]&&Date.now()<cd[model]){let e=new Error('limite temporário ('+Math.ceil((cd[model]-Date.now())/1000)+'s)');e.rate=1;throw e}let c=new AbortController(),tm=setTimeout(()=>c.abort(),35000);try{let body={model,messages:[{role:'user',content:p}],temperature:.1,max_completion_tokens:model.includes('qwen')?600:1000};if(model.includes('qwen')){body.reasoning_effort='low';body.reasoning_format='hidden'}else{body.reasoning_effort='low';body.include_reasoning=false}let r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body),signal:c.signal}),j=await r.json().catch(()=>({}));if(!r.ok){let e=new Error(j?.error?.message||'HTTP '+r.status);e.status=r.status;if(r.status===429){e.rate=1;cd[model]=Date.now()+(retrySec(e.message)+2)*1000}throw e}let t=j?.choices?.[0]?.message?.content?.trim();if(!t)throw Error('resposta vazia');return t}finally{clearTimeout(tm)}}
-function parse(t,map,verify=false){let g=n=>(t.match(new RegExp(n+'\\s*:\\s*([^\\n]+)','i'))||[])[1]?.trim()||'',resp=g('RESPOSTA'),val=g('VALOR'),exp=(t.match(/EXPLICA[CÇ][AÃ]O\s*:\s*([\s\S]*)/i)||[])[1]?.trim()||'',letx=letter(resp,map),num=/^(n\/a|na|null|vazio|nenhum)$/i.test(val)?null:Number((val.replace(',','.').match(/-?\d+(?:\.\d+)?/)||[])[0]);let o={resposta:resp,valor:Number.isFinite(num)?num:null,explicacao:exp,letra:letx,key:letx?'L:'+letx:'T:'+can(resp).slice(0,120),ok:!!resp};if(verify){o.veredito=g('VEREDITO').toUpperCase();o.expr=g('EXPRESSAO')}return o}
-function concrete(o,map){let r=String(o.resposta||'').trim();if(!r||/^(n\/a|na|null|nenhum|vazio|não sei|nao sei)$/i.test(r))return false;if(/^[A-F]$/i.test(r))return true;if(/[=≈]\s*$/.test(r))return false;if(o.letra&&map[o.letra])return true;return /\d|√|sqrt|\b(cm|m|km|graus?|°|%|anos?|horas?|minutos?|segundos?|verdadeiro|falso|sim|não|nao)\b/i.test(r)||r.length>2}
-async function solve(model,name,p,map){let last='';for(let i=1;i<=2;i++){try{st.textContent=name+' — tentativa '+i+'/2...';let o=parse(await call(model,p),map);if(!concrete(o,map)){last='resposta incompleta';p+='\nDê um resultado final concreto; não pare em fórmula genérica.';continue}return{...o,ok:true}}catch(e){if(e.rate)return{ok:false,rate:true,error:e.message};last=e.message||'erro';if(e.status===401||e.status===403)break;if(i===1)await new Promise(r=>setTimeout(r,600))}}return{ok:false,error:last}}
-function same(a,b){return !!(a?.ok&&b?.ok&&(a.key===b.key||(a.letra&&b.letra&&a.letra===b.letra)||can(a.resposta)===can(b.resposta)))}
-function show(o,map){if(o.letra&&map[o.letra]&&can(o.resposta).length<=2)return o.letra+' — '+map[o.letra];return o.resposta}
-function toks(s){s=String(s||'').toLowerCase().replace(/,/g,'.').replace(/π/g,'pi').replace(/√/g,'sqrt');let a=[],i=0;while(i<s.length){let c=s[i];if(/\s/.test(c)){i++;continue}if(/[0-9.]/.test(c)){let j=i+1;while(j<s.length&&/[0-9.]/.test(s[j]))j++;let n=s.slice(i,j);if(!/^\d*\.?\d+$/.test(n))throw 0;a.push(['n',+n]);i=j;continue}if(/[a-z]/.test(c)){let j=i+1;while(j<s.length&&/[a-z]/.test(s[j]))j++;a.push(['i',s.slice(i,j)]);i=j;continue}if('+-*/^()'.includes(c)){a.push([c,c]);i++;continue}throw 0}return a}
-function calc(e){if(!e||/^(n\/a|na|null|vazio|nenhum)$/i.test(String(e).trim()))return null;let t;try{t=toks(e)}catch{return null}let p=0,pk=()=>t[p],tk=x=>pk()?.[0]===x?t[p++]:null;function E(){let v=T();for(;;){if(tk('+'))v+=T();else if(tk('-'))v-=T();else return v}}function T(){let v=P();for(;;){if(tk('*'))v*=P();else if(tk('/'))v/=P();else return v}}function P(){let v=U();if(tk('^'))v=Math.pow(v,P());return v}function U(){if(tk('+'))return U();if(tk('-'))return-U();return A()}function A(){let n=tk('n');if(n)return n[1];let id=tk('i');if(id){if(id[1]==='pi')return Math.PI;if(!tk('('))throw 0;let a=E();if(!tk(')'))throw 0;let rad=a*Math.PI/180;switch(id[1]){case'sqrt':return Math.sqrt(a);case'sin':return Math.sin(rad);case'cos':return Math.cos(rad);case'tan':return Math.tan(rad);case'asin':return Math.asin(a)*180/Math.PI;case'acos':return Math.acos(a)*180/Math.PI;case'atan':return Math.atan(a)*180/Math.PI;default:throw 0}}if(tk('(')){let v=E();if(!tk(')'))throw 0;return v}throw 0}try{let v=E();return p===t.length&&Number.isFinite(v)?v:null}catch{return null}}
-async function verify(question,cand,map){let p='Resolva do zero usando SOMENTE os dados da questão e confira a resposta candidata. Se houver matemática, monte sua própria expressão a partir da questão. Use exatamente:\nVEREDITO: OK ou ERRO\nRESPOSTA: [resposta correta]\nVALOR: [decimal correto ou N/A]\nEXPRESSAO: [expressão com números,+,-,*,/,^,sqrt,sin,cos,tan,asin,acos,atan ou N/A]\nEXPLICAÇÃO: [até 2 frases]\nTrigonometria em graus. Não use LaTeX.\n\nQUESTÃO:\n'+question+'\n\nCANDIDATA:\n'+cand;let last='';for(let m of [M[2],M[0],M[1]]){try{st.textContent='Verificando de forma independente...';let o=parse(await call(m,p),map,true);if(!o.resposta||!o.veredito)throw Error('verificação incompleta');o.ok=true;let v=calc(o.expr);o.mathOK=o.valor==null||v==null?null:Math.abs(v-o.valor)<=Math.max(.05,Math.abs(o.valor)*.015);return o}catch(e){last=e.message||'erro';if(e.status===401||e.status===403)break}}return{ok:false,error:last}}
-async function run(){bt.disabled=true;bt.textContent='⏳ Analisando...';out.textContent='🤔 IA 1 e IA 2 estão resolvendo...';st.textContent='';let Q=q();if(!Q){out.textContent='❌ Não consegui ler a questão.';bt.disabled=false;bt.textContent='🔄 Resolver questão';return}let map=alts(Q),p='Resolva SOMENTE a questão atual. Pode ser de qualquer matéria. Leia alternativas e descrições. Se houver cálculo, resolva até o fim. Use exatamente:\nRESPOSTA: [letra e resposta, ou resultado final]\nVALOR: [decimal equivalente ou N/A]\nEXPLICAÇÃO: [até 2 frases simples]\nNão use LaTeX.\n\nQUESTÃO:\n'+Q;let [a,b]=await Promise.all([solve(M[0],'IA 1',p,map),solve(M[1],'IA 2',p,map)]),cand=null,c=null;if(same(a,b))cand=a;else{out.textContent='🤔 IA 3 está desempatando...';c=await solve(M[2],'IA 3',p,map);let v=[a,b,c].filter(x=>x.ok);for(let i=0;i<v.length&&!cand;i++)for(let j=i+1;j<v.length;j++)if(same(v[i],v[j])){cand=v[i];break}}if(!cand){out.textContent='⚠️ RESPOSTA NÃO CONFIÁVEL\nIA 1: '+(a.resposta||a.error||'falhou')+'\nIA 2: '+(b.resposta||b.error||'falhou')+'\nIA 3: '+(c?.resposta||c?.error||'falhou');st.textContent='Não houve acordo entre pelo menos 2 IAs.';bt.disabled=false;bt.textContent='🔄 Resolver questão';return}out.textContent='🧮 Verificando de forma independente...';let v=await verify(Q,cand.resposta,map),match=v.ok&&v.veredito==='OK'&&(v.key===cand.key||(v.letra&&cand.letra&&v.letra===cand.letra)||can(v.resposta)===can(cand.resposta));if(match&&v.mathOK!==false){out.textContent='✅ RESPOSTA CONFIRMADA: '+show(cand,map)+'\n\nEXPLICAÇÃO: '+(v.explicacao||cand.explicacao||'Resposta confirmada.');st.textContent='✓ Verificação independente'+(v.mathOK===true?' • 🧮 conta conferida':'')}else{out.textContent='⚠️ RESPOSTA NÃO CONFIRMADA\nCandidato: '+show(cand,map)+(v.ok?'\nVerificador: '+v.resposta:'');st.textContent=v.ok?'O verificador independente encontrou divergência.':'Não foi possível verificar agora.'}bt.disabled=false;bt.textContent='🔄 Resolver questão'}
-bt.onclick=run;x.onclick=()=>{box.remove();delete window.__KH};window.__KH=1;run();
-})();
+if(window.__KHGRQ&&document.getElementById('kh-groq')){
+document.getElementById('kh-groq').style.display='block';
+return
+}
+
+let key=prompt('Cole sua chave da API Groq:');
+if(!key)return;
+key=key.trim();
+
+const MODELS=[
+'openai/gpt-oss-120b',
+'openai/gpt-oss-20b',
+'qwen/qwen3.8-27b'
+];
+
+const NOMES=['IA 1','IA 2','IA 3'];
+
+let box=document.createElement('div');
+
+box.id='kh-groq';
+
+box.style=
+'position:fixed;right:8px;top:8px;width:min(290px,calc(100vw - 16px));z-index:2147483647;background:#fff;color:#111;border:2px solid #1865f2;border-radius:12px;padding:10px;font:13px Arial;box-shadow:0 4px 18px #0006;max-height:43vh;overflow:auto';
+
+let top=document.createElement('div');
+
+top.innerHTML='<b>📘 Khan Helper</b>';
+
+top.style=
+'touch-action:none;user-select:none;cursor:move;padding:3px 2px';
+
+let close=document.createElement('button');
+
+close.textContent='✕';
+
+close.style=
+'float:right;border:0;background:#eee;border-radius:6px;padding:3px 8px;font-size:15px';
+
+top.appendChild(close);
+
+let res=document.createElement('div');
+
+res.style=
+'margin:9px 0;white-space:pre-wrap;line-height:1.4';
+
+res.textContent='🤔 Analisando...';
+
+let status=document.createElement('div');
+
+status.style=
+'font-size:10px;color:#777;margin-bottom:6px';
+
+let btn=document.createElement('button');
+
+btn.textContent='🔄 Atualizar';
+
+btn.style=
+'width:100%;padding:9px;border:0;border-radius:8px;background:#1865f2;color:#fff;font-weight:bold;font-size:14px';
+
+box.append(top,res,status,btn);
+
+document.body.appendChild(box);
+
+
+/* ARRASTAR A JANELA */
+
+let drag=false;
+let sx=0;
+let sy=0;
+let bx=0;
+let by=0;
+
+top.onpointerdown=e=>{
+
+if(e.target===close)return;
+
+drag=true;
+
+let r=box.getBoundingClientRect();
+
+sx=e.clientX;
+sy=e.clientY;
+
+bx=r.left;
+by=r.top;
+
+box.style.left=bx+'px';
+box.style.top=by+'px';
+
+box.style.right='auto';
+box.style.bottom='auto';
+
+top.setPointerCapture?.(e.pointerId);
+
+};
+
+top.onpointermove=e=>{
+
+if(!drag)return;
+
+let x=
+bx+e.clientX-sx;
+
+let y=
+by+e.clientY-sy;
+
+x=Math.max(
+4,
+Math.min(
+x,
+innerWidth-box.offsetWidth-4
+)
+);
+
+y=Math.max(
+4,
+Math.min(
+y,
+innerHeight-box.offsetHeight-4
+)
+);
+
+box.style.left=x+'px';
+box.style.top=y+'px';
+
+};
+
+top.onpointerup=
+top.onpointercancel=
+()=>drag=false;
+
+
+/* CAPTURA DA QUESTÃO */
+
+const add=(a,s,x)=>{
+
+x=(x||'')
+.replace(/\s+/g,' ')
+.trim();
+
+if(
+x &&
+x.length>1 &&
+!s.has(x)
+){
+
+s.add(x);
+a.push(x);
+
+}
+
+};
+
+function pegar(){
+
+let root=
+
+document.querySelector(
+'[data-testid="content-library-content-panel"]'
+)
+
+||
+
+document.querySelector(
+'main,[role="main"]'
+)
+
+||
+
+document.body;
+
+let a=[];
+let s=new Set();
+
+let w=document.createTreeWalker(
+root,
+NodeFilter.SHOW_TEXT
+);
+
+while(w.nextNode()){
+
+let e=
+w.currentNode.parentElement;
+
+if(
+!e ||
+e.closest('#kh-groq') ||
+['SCRIPT','STYLE','NOSCRIPT']
+.includes(e.tagName)
+){
+
+continue;
+
+}
+
+try{
+
+let c=
+getComputedStyle(e);
+
+if(
+c.display==='none' ||
+c.visibility==='hidden'
+){
+
+continue;
+
+}
+
+}catch{}
+
+add(
+a,
+s,
+w.currentNode.textContent
+);
+
+}
+
+root
+.querySelectorAll(
+'[aria-label],[alt],[title],svg text,svg tspan,svg title,svg desc'
+)
+.forEach(e=>{
+
+if(
+e.closest &&
+e.closest('#kh-groq')
+){
+
+return;
+
+}
+
+add(
+a,
+s,
+e.getAttribute?.('aria-label')
+||
+e.getAttribute?.('alt')
+||
+e.getAttribute?.('title')
+||
+e.textContent
+);
+
+});
+
+return a
+.join('\n')
+.slice(0,14000);
+
+}
+
+
+/* CHAMADA PARA GROQ */
+
+async function chamar(
+model,
+promptTxt
+){
+
+let ctrl=
+new AbortController();
+
+let timer=
+setTimeout(
+()=>ctrl.abort(),
+30000
+);
+
+try{
+
+let body={
+
+model:model,
+
+messages:[
+{
+role:'user',
+content:promptTxt
+}
+],
+
+temperature:.1,
+
+max_completion_tokens:
+model.includes('qwen')
+? 500
+: 1200
+
+};
+
+
+/* GPT-OSS */
+
+if(
+model.includes('gpt-oss')
+){
+
+body.reasoning_effort=
+'low';
+
+body.include_reasoning=
+false;
+
+}
+
+
+/* QWEN */
+
+if(
+model.includes('qwen')
+){
+
+body.reasoning_effort=
+'low';
+
+body.reasoning_format=
+'hidden';
+
+}
+
+
+let r=
+await fetch(
+
+'https://api.groq.com/openai/v1/chat/completions',
+
+{
+
+method:'POST',
+
+headers:{
+
+'Content-Type':
+'application/json',
+
+'
