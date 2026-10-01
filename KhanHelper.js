@@ -9,9 +9,9 @@
   key=key.trim();
 
   const MODELS=[
-    'qwen/qwen3.8-27b',
     'openai/gpt-oss-120b',
-    'openai/gpt-oss-20b'
+    'openai/gpt-oss-20b',
+    'qwen/qwen3.8-27b'
   ];
 
   const box=document.createElement('div');
@@ -40,10 +40,6 @@
 
   box.append(top,res,status,btn);
   document.body.appendChild(box);
-
-  // =========================
-  // ARRASTAR
-  // =========================
 
   let drag=false,sx=0,sy=0,bx=0,by=0;
 
@@ -95,10 +91,6 @@
 
   top.onpointerup=
   top.onpointercancel=()=>drag=false;
-
-  // =========================
-  // CAPTURA
-  // =========================
 
   const add=(a,s,x)=>{
     x=(x||'')
@@ -190,10 +182,6 @@
       .join('\n')
       .slice(0,14000);
   }
-
-  // =========================
-  // ALTERNATIVAS
-  // =========================
 
   function canon(t){
     return String(t||'')
@@ -297,10 +285,6 @@
     return '';
   }
 
-  // =========================
-  // GROQ
-  // =========================
-
   async function chamar(
     model,
     promptTxt
@@ -400,10 +384,6 @@
     }
   }
 
-  // =========================
-  // PARSE
-  // =========================
-
   function parseResposta(
     texto,
     mapa
@@ -487,10 +467,6 @@
       raw:texto
     };
   }
-
-  // =========================
-  // CALCULADORA
-  // =========================
 
   function calcular(expr){
     if(!expr)return null;
@@ -660,10 +636,6 @@
     );
   }
 
-  // =========================
-  // TENTATIVAS
-  // =========================
-
   async function resolverIA(
     model,
     nome,
@@ -787,7 +759,6 @@
         mapa[o.letra];
 
       const cr=canon(o.resposta);
-      const ct=canon(txt);
 
       if(
         cr===canon(o.letra) ||
@@ -823,10 +794,6 @@
 
     status.textContent=msg;
   }
-
-  // =========================
-  // PRINCIPAL
-  // =========================
 
   async function resolver(){
     btn.disabled=true;
@@ -892,7 +859,6 @@
         mapa
       );
 
-    // IA 1 + IA 2 concordaram
     if(
       ia1.ok &&
       ia2.ok &&
@@ -918,7 +884,6 @@
       return;
     }
 
-    // IA 3
     res.textContent=
       '🤔 IA 3 está conferindo...';
 
