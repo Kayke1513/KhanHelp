@@ -337,4 +337,345 @@ headers:{
 'Content-Type':
 'application/json',
 
-'
+'Authorization':
+'Bearer '+key
+
+},
+
+body:
+JSON.stringify(body),
+
+signal:
+ctrl.signal
+
+}
+
+);
+
+
+let j=
+await r
+.json()
+.catch(()=>({}));
+
+
+if(!r.ok){
+
+let er=
+new Error(
+
+j?.error?.message
+||
+('Erro HTTP '+r.status)
+
+);
+
+er.status=
+r.status;
+
+throw er;
+
+}
+
+
+let t=
+
+j?.choices?.[0]
+?.message
+?.content
+?.trim();
+
+
+if(!t){
+
+throw new Error(
+'A IA não devolveu resposta.'
+);
+
+}
+
+
+return t;
+
+
+}finally{
+
+clearTimeout(timer);
+
+}
+
+}
+
+
+/* RESOLVER */
+
+async function resolver(){
+
+btn.disabled=true;
+
+btn.textContent=
+'⏳ Analisando...';
+
+res.textContent=
+'🤔 Pensando...';
+
+status.textContent='';
+
+
+let q=pegar();
+
+
+if(!q){
+
+res.textContent=
+'❌ Não consegui ler a questão.';
+
+btn.disabled=false;
+
+btn.textContent=
+'🔄 Atualizar';
+
+return;
+
+}
+
+
+let p=
+
+'Resolva SOMENTE a questão escolar atual abaixo. '+
+
+'A questão pode ser de qualquer matéria. '+
+
+'Leia com atenção o enunciado, alternativas, números, fórmulas, descrições de figuras e gráficos. '+
+
+'Se houver cálculo, faça a conta até o RESULTADO FINAL. '+
+
+'Não pare em fórmula genérica. '+
+
+'Não responda N/A se houver informação suficiente para resolver. '+
+
+'Confira a resposta antes de enviar. '+
+
+'Se for múltipla escolha, informe a LETRA e a RESPOSTA. '+
+
+'Se for questão aberta, informe diretamente o resultado que deve ser colocado no campo. '+
+
+'Responda em português muito simples e curto. '+
+
+'Use exatamente este formato:\n'+
+
+'RESPOSTA: [letra e resposta, ou resultado final]\n'+
+
+'EXPLICAÇÃO: [explicação simples em no máximo 2 frases]\n\n'+
+
+'QUESTÃO:\n'+q;
+
+
+for(
+let i=0;
+i<MODELS.length;
+i++
+){
+
+let model=
+MODELS[i];
+
+let nome=
+NOMES[i];
+
+
+status.textContent=
+'Tentando '+nome+'...';
+
+
+try{
+
+let ans=
+await chamar(
+model,
+p
+);
+
+res.textContent=
+ans;
+
+status.textContent=
+'✓ '+nome;
+
+btn.disabled=false;
+
+btn.textContent=
+'🔄 Atualizar';
+
+return;
+
+
+}catch(e){
+
+
+/* CHAVE INVÁLIDA */
+
+if(
+e.status===401 ||
+e.status===403
+){
+
+res.textContent=
+'❌ A chave Groq não foi aceita. Confira ou gere uma nova.';
+
+status.textContent='';
+
+btn.disabled=false;
+
+btn.textContent=
+'🔄 Atualizar';
+
+return;
+
+}
+
+
+/* LIMITE TEMPORÁRIO */
+
+if(
+e.status===429
+){
+
+status.textContent=
+'↪ '+nome+
+' está temporariamente no limite. Tentando outra IA...';
+
+continue;
+
+}
+
+
+/* TIMEOUT */
+
+if(
+e.name==='AbortError'
+){
+
+status.textContent=
+'↪ '+nome+
+' demorou demais. Tentando outra IA...';
+
+continue;
+
+}
+
+
+/* BLOQUEIO DE REDE */
+
+if(
+String(e.message)
+.includes('Failed to fetch')
+){
+
+res.textContent=
+'❌ O navegador bloqueou a conexão direta com a Groq.';
+
+status.textContent='';
+
+btn.disabled=false;
+
+btn.textContent=
+'🔄 Atualizar';
+
+return;
+
+}
+
+
+/* QUALQUER OUTRO ERRO */
+
+status.textContent=
+'↪ '+nome+
+' falhou. Tentando outra IA...';
+
+}
+
+}
+
+
+res.textContent=
+'❌ Nenhuma IA respondeu agora. Aguarde um pouco e toque em Atualizar.';
+
+status.textContent='';
+
+btn.disabled=false;
+
+btn.textContent=
+'🔄 Atualizar';
+
+}
+
+
+/* BOTÃO */
+
+btn.onclick=
+resolver;
+
+
+/* MANTÉM A JANELA NA PÁGINA */
+
+let obs=
+new MutationObserver(()=>{
+
+if(
+window.__KHGRQ &&
+!document.getElementById(
+'kh-groq'
+) &&
+document.body
+){
+
+document.body.appendChild(
+box
+);
+
+}
+
+});
+
+
+obs.observe(
+
+document.documentElement,
+
+{
+childList:true,
+subtree:true
+}
+
+);
+
+
+/* FECHAR */
+
+close.onclick=()=>{
+
+obs.disconnect();
+
+box.remove();
+
+delete window.__KHGRQ;
+
+};
+
+
+window.__KHGRQ={
+
+show:()=>{
+
+box.style.display=
+'block';
+
+}
+
+};
+
+
+resolver();
+
+})();
