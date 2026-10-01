@@ -14,6 +14,8 @@
     'qwen/qwen3.8-27b'
   ];
 
+  const cooldowns={};
+
   const box=document.createElement('div');
   box.id='kh-groq';
   box.style='position:fixed;right:8px;top:8px;width:min(290px,calc(100vw - 16px));z-index:2147483647;background:#fff;color:#111;border:2px solid #1865f2;border-radius:12px;padding:10px;font:13px Arial;box-shadow:0 4px 18px #0006;max-height:45vh;overflow:auto';
@@ -45,63 +47,31 @@
 
   top.onpointerdown=e=>{
     if(e.target===close)return;
-
     drag=true;
-
     const r=box.getBoundingClientRect();
-
-    sx=e.clientX;
-    sy=e.clientY;
-    bx=r.left;
-    by=r.top;
-
+    sx=e.clientX;sy=e.clientY;bx=r.left;by=r.top;
     box.style.left=bx+'px';
     box.style.top=by+'px';
     box.style.right='auto';
     box.style.bottom='auto';
-
     top.setPointerCapture?.(e.pointerId);
   };
 
   top.onpointermove=e=>{
     if(!drag)return;
-
     let x=bx+e.clientX-sx;
     let y=by+e.clientY-sy;
-
-    x=Math.max(
-      4,
-      Math.min(
-        x,
-        innerWidth-box.offsetWidth-4
-      )
-    );
-
-    y=Math.max(
-      4,
-      Math.min(
-        y,
-        innerHeight-box.offsetHeight-4
-      )
-    );
-
+    x=Math.max(4,Math.min(x,innerWidth-box.offsetWidth-4));
+    y=Math.max(4,Math.min(y,innerHeight-box.offsetHeight-4));
     box.style.left=x+'px';
     box.style.top=y+'px';
   };
 
-  top.onpointerup=
-  top.onpointercancel=()=>drag=false;
+  top.onpointerup=top.onpointercancel=()=>drag=false;
 
   const add=(a,s,x)=>{
-    x=(x||'')
-      .replace(/\s+/g,' ')
-      .trim();
-
-    if(
-      x &&
-      x.length>1 &&
-      !s.has(x)
-    ){
+    x=(x||'').replace(/\s+/g,' ').trim();
+    if(x&&x.length>1&&!s.has(x)){
       s.add(x);
       a.push(x);
     }
@@ -109,50 +79,29 @@
 
   function pegar(){
     const root=
-      document.querySelector(
-        '[data-testid="content-library-content-panel"]'
-      )||
-      document.querySelector(
-        'main,[role="main"]'
-      )||
+      document.querySelector('[data-testid="content-library-content-panel"]')||
+      document.querySelector('main,[role="main"]')||
       document.body;
 
     const a=[];
     const seen=new Set();
-
-    const w=document.createTreeWalker(
-      root,
-      NodeFilter.SHOW_TEXT
-    );
+    const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
 
     while(w.nextNode()){
       const e=w.currentNode.parentElement;
 
       if(
-        !e ||
-        e.closest('#kh-groq') ||
-        ['SCRIPT','STYLE','NOSCRIPT']
-          .includes(e.tagName)
-      ){
-        continue;
-      }
+        !e||
+        e.closest('#kh-groq')||
+        ['SCRIPT','STYLE','NOSCRIPT'].includes(e.tagName)
+      )continue;
 
       try{
         const c=getComputedStyle(e);
-
-        if(
-          c.display==='none' ||
-          c.visibility==='hidden'
-        ){
-          continue;
-        }
+        if(c.display==='none'||c.visibility==='hidden')continue;
       }catch{}
 
-      add(
-        a,
-        seen,
-        w.currentNode.textContent
-      );
+      add(a,seen,w.currentNode.textContent);
     }
 
     root
@@ -160,13 +109,7 @@
         '[aria-label],[alt],[title],svg text,svg tspan,svg title,svg desc'
       )
       .forEach(e=>{
-
-        if(
-          e.closest &&
-          e.closest('#kh-groq')
-        ){
-          return;
-        }
+        if(e.closest&&e.closest('#kh-groq'))return;
 
         add(
           a,
@@ -178,9 +121,7 @@
         );
       });
 
-    return a
-      .join('\n')
-      .slice(0,14000);
+    return a.join('\n').slice(0,14000);
   }
 
   function canon(t){
@@ -196,73 +137,58 @@
   }
 
   function alternativas(texto){
-    const linhas=texto
-      .split('\n')
-      .map(x=>x.trim())
-      .filter(Boolean);
+    const linhas=
+      texto
+        .split('\n')
+        .map(x=>x.trim())
+        .filter(Boolean);
 
     const mapa={};
 
     for(let i=0;i<linhas.length;i++){
-
-      const m=
-        linhas[i].match(
-          /^([A-F])$/
-        );
+      const m=linhas[i].match(/^([A-F])$/);
 
       if(!m)continue;
 
       const letra=m[1];
-
       const partes=[];
 
       for(
         let j=i+1;
-        j<linhas.length &&
-        j<=i+4;
+        j<linhas.length&&
+        j<=i+5;
         j++
       ){
-        if(/^[A-F]$/.test(linhas[j])){
-          break;
-        }
+        if(/^[A-F]$/.test(linhas[j]))break;
 
         if(
-          /^(verificar|pular|relatar|dicas|escolha)/i
+          /^(verificar|pular|relatar|dicas|escolha|conferir)/i
             .test(linhas[j])
-        ){
-          break;
-        }
+        )break;
 
         partes.push(linhas[j]);
       }
 
       if(partes.length){
-        mapa[letra]=
-          partes.join(' ');
+        mapa[letra]=partes.join(' ');
       }
     }
 
     return mapa;
   }
 
-  function inferirLetra(
-    resposta,
-    mapa
-  ){
+  function inferirLetra(resposta,mapa){
     const direta=
       String(resposta||'')
         .match(/^\s*([A-F])\b/i);
 
     if(direta){
-      return direta[1]
-        .toUpperCase();
+      return direta[1].toUpperCase();
     }
 
     const a=canon(resposta);
 
-    if(a.length<2){
-      return '';
-    }
+    if(a.length<2)return '';
 
     for(
       const [letra,texto]
@@ -271,10 +197,10 @@
       const b=canon(texto);
 
       if(
-        a.length>=2 &&
-        b.length>=2 &&
+        a.length>=2&&
+        b.length>=2&&
         (
-          b.includes(a) ||
+          b.includes(a)||
           a.includes(b)
         )
       ){
@@ -285,10 +211,44 @@
     return '';
   }
 
-  async function chamar(
-    model,
-    promptTxt
-  ){
+  function parseRetrySeconds(msg){
+    const m=
+      String(msg||'')
+        .match(
+          /try again in\s*(\d+(?:\.\d+)?)s/i
+        );
+
+    if(m){
+      return Math.ceil(Number(m[1]));
+    }
+
+    return 60;
+  }
+
+  async function chamar(model,promptTxt){
+    if(
+      cooldowns[model]&&
+      Date.now()<cooldowns[model]
+    ){
+      const left=
+        Math.ceil(
+          (
+            cooldowns[model]-
+            Date.now()
+          )/1000
+        );
+
+      const er=
+        new Error(
+          'limite temporário ('+
+          left+
+          's)'
+        );
+
+      er.rate=true;
+      throw er;
+    }
+
     const ctrl=
       new AbortController();
 
@@ -300,7 +260,7 @@
 
     try{
       const body={
-        model:model,
+        model,
 
         messages:[
           {
@@ -311,16 +271,16 @@
 
         max_completion_tokens:
           model.includes('qwen')
-            ? 500
-            : 900
+            ? 450
+            : 900,
+
+        temperature:.15
       };
 
       if(model.includes('qwen')){
-        body.temperature=.2;
         body.reasoning_effort='low';
         body.reasoning_format='hidden';
       }else{
-        body.temperature=.2;
         body.reasoning_effort='low';
         body.include_reasoning=false;
       }
@@ -331,11 +291,8 @@
           method:'POST',
 
           headers:{
-            'Content-Type':
-              'application/json',
-
-            'Authorization':
-              'Bearer '+key
+            'Content-Type':'application/json',
+            'Authorization':'Bearer '+key
           },
 
           body:JSON.stringify(body),
@@ -344,13 +301,13 @@
         }
       );
 
-      const j=await r
-        .json()
-        .catch(()=>({}));
+      const j=
+        await r.json()
+          .catch(()=>({}));
 
       if(!r.ok){
         const msg=
-          j?.error?.message ||
+          j?.error?.message||
           ('Erro HTTP '+r.status);
 
         const er=
@@ -360,6 +317,13 @@
 
         if(r.status===429){
           er.rate=true;
+
+          const sec=
+            parseRetrySeconds(msg);
+
+          cooldowns[model]=
+            Date.now()+
+            (sec+2)*1000;
         }
 
         throw er;
@@ -384,37 +348,34 @@
     }
   }
 
-  function parseResposta(
-    texto,
-    mapa
-  ){
+  function parseResposta(texto,mapa){
     const resposta=
       (
         texto.match(
           /RESPOSTA\s*:\s*([^\n]+)/i
         )||[]
-      )[1]?.trim() || '';
+      )[1]?.trim()||'';
 
     const valorTxt=
       (
         texto.match(
           /VALOR\s*:\s*([^\n]+)/i
         )||[]
-      )[1]?.trim() || '';
+      )[1]?.trim()||'';
 
     const calc=
       (
         texto.match(
           /CALC\s*:\s*([^\n]+)/i
         )||[]
-      )[1]?.trim() || '';
+      )[1]?.trim()||'';
 
     const explicacao=
       (
         texto.match(
           /EXPLICA[CÇ][AÃ]O\s*:\s*([\s\S]*)/i
         )||[]
-      )[1]?.trim() || '';
+      )[1]?.trim()||'';
 
     const letra=
       inferirLetra(
@@ -425,7 +386,7 @@
     let valor=null;
 
     if(
-      valorTxt &&
+      valorTxt&&
       !/^(n\/a|na|null|vazio|nenhum)$/i
         .test(valorTxt)
     ){
@@ -437,7 +398,8 @@
           );
 
       if(m){
-        const n=Number(m[0]);
+        const n=
+          Number(m[0]);
 
         if(Number.isFinite(n)){
           valor=n;
@@ -445,17 +407,12 @@
       }
     }
 
-    let keyNorm='';
-
-    if(letra){
-      keyNorm=
-        'L:'+letra;
-    }else{
-      keyNorm=
-        'T:'+
-        canon(resposta)
-          .slice(0,100);
-    }
+    const keyNorm=
+      letra
+        ? 'L:'+letra
+        : 'T:'+
+          canon(resposta)
+            .slice(0,120);
 
     return {
       resposta,
@@ -608,9 +565,10 @@
 
   function conferirMatematica(o){
     if(
-      o.valor==null ||
-      !o.calc ||
-      /^(n\/a|na)$/i.test(o.calc)
+      o.valor==null||
+      !o.calc||
+      /^(n\/a|na|null|vazio|nenhum)$/i
+        .test(o.calc)
     ){
       return null;
     }
@@ -631,9 +589,70 @@
 
     return (
       Math.abs(
-        calculado-o.valor
+        calculado-
+        o.valor
       )<=tol
     );
+  }
+
+  function respostaConcreta(o,mapa){
+    const r=
+      String(o.resposta||'')
+        .trim();
+
+    if(!r)return false;
+
+    if(
+      /^(n\/a|na|null|nenhum|vazio|não sei|nao sei)$/i
+        .test(r)
+    ){
+      return false;
+    }
+
+    if(/^[A-F]$/i.test(r)){
+      return true;
+    }
+
+    if(/[=≈]\s*$/i.test(r)){
+      return false;
+    }
+
+    const temNumero=
+      /\d/.test(r);
+
+    const temRaiz=
+      /√|sqrt/i.test(r);
+
+    const temTextoFinal=
+      /\b(cm|m|km|graus?|°|%|anos?|horas?|minutos?|segundos?|verdadeiro|falso|sim|não|nao)\b/i
+        .test(r);
+
+    const pareceFormulaGenerica=
+      /\b[a-z]\s*=|\b[a-z]\^?2\b|\ba\b.*\bb\b.*\bcos\b/i
+        .test(r)&&
+      !temNumero&&
+      !temRaiz;
+
+    if(pareceFormulaGenerica){
+      return false;
+    }
+
+    if(
+      o.letra&&
+      mapa[o.letra]
+    ){
+      return true;
+    }
+
+    if(
+      temNumero||
+      temRaiz||
+      temTextoFinal
+    ){
+      return true;
+    }
+
+    return r.length>=2;
   }
 
   async function resolverIA(
@@ -643,13 +662,13 @@
     mapa
   ){
     let ultimo='';
+    let pedido=promptTxt;
 
     for(
       let tentativa=1;
       tentativa<=2;
       tentativa++
     ){
-
       try{
         status.textContent=
           nome+
@@ -660,7 +679,7 @@
         const txt=
           await chamar(
             model,
-            promptTxt
+            pedido
           );
 
         const parsed=
@@ -669,10 +688,20 @@
             mapa
           );
 
-        if(!parsed.resposta){
-          throw new Error(
-            'resposta final vazia'
-          );
+        if(
+          !respostaConcreta(
+            parsed,
+            mapa
+          )
+        ){
+          ultimo=
+            'resposta incompleta/genérica';
+
+          pedido=
+            promptTxt+
+            '\n\nSua resposta anterior não trouxe um resultado final concreto. Resolva até o fim. Não responda N/A e não pare em fórmula genérica. Dê a resposta final da questão.';
+
+          continue;
         }
 
         const math=
@@ -684,6 +713,10 @@
           ultimo=
             'a conta não bateu';
 
+          pedido=
+            promptTxt+
+            '\n\nA conta anterior não bateu com o valor final. Refaça do zero e corrija.';
+
           continue;
         }
 
@@ -694,21 +727,20 @@
         };
 
       }catch(e){
-
         if(e?.rate){
           return {
             ok:false,
             rate:true,
-            error:'limite temporário da API'
+            error:e.message
           };
         }
 
         ultimo=
-          e?.message ||
+          e?.message||
           'erro';
 
         if(
-          e?.status===401 ||
+          e?.status===401||
           e?.status===403
         ){
           break;
@@ -716,7 +748,10 @@
 
         if(tentativa===1){
           await new Promise(
-            r=>setTimeout(r,500)
+            r=>setTimeout(
+              r,
+              700
+            )
           );
         }
       }
@@ -734,34 +769,35 @@
     }
 
     if(o?.rate){
-      return 'limite temporário';
+      return (
+        o.error||
+        'limite temporário'
+      );
     }
 
     return (
       'falhou ('+
       (
-        o?.error ||
+        o?.error||
         'erro desconhecido'
       )+
       ')'
     );
   }
 
-  function respostaBonita(
-    o,
-    mapa
-  ){
+  function respostaBonita(o,mapa){
     if(
-      o.letra &&
+      o.letra&&
       mapa[o.letra]
     ){
       const txt=
         mapa[o.letra];
 
-      const cr=canon(o.resposta);
+      const cr=
+        canon(o.resposta);
 
       if(
-        cr===canon(o.letra) ||
+        cr===canon(o.letra)||
         cr.length<=2
       ){
         return (
@@ -788,11 +824,37 @@
       )+
       '\nEXPLICAÇÃO: '+
       (
-        o.explicacao ||
-        'Duas IAs chegaram à mesma resposta.'
+        o.explicacao||
+        'Duas verificações chegaram à mesma resposta.'
       );
 
     status.textContent=msg;
+  }
+
+  function mesmaResposta(a,b){
+    if(
+      !a?.ok||
+      !b?.ok
+    ){
+      return false;
+    }
+
+    if(a.key===b.key){
+      return true;
+    }
+
+    if(
+      a.letra&&
+      b.letra&&
+      a.letra===b.letra
+    ){
+      return true;
+    }
+
+    return (
+      canon(a.resposta)===
+      canon(b.resposta)
+    );
   }
 
   async function resolver(){
@@ -825,23 +887,22 @@
 
     const p=
       'Resolva SOMENTE a questão escolar atual abaixo. '+
-      'Pode ser matemática, ciências, português, história ou qualquer outra matéria. '+
-      'Leia também descrições de imagens, gráficos, fórmulas e alternativas. '+
-      'Faça os cálculos quando forem necessários e confira antes de responder. '+
-      'Não chute. '+
-      'Se for múltipla escolha, RESPOSTA deve começar com a letra da alternativa e depois a resposta. '+
-      'Se não for múltipla escolha, escreva somente a resposta. '+
+      'Ela pode ser de qualquer matéria. '+
+      'Leia descrições de imagens, gráficos, fórmulas e alternativas. '+
+      'Se houver cálculo, faça até o resultado final e confira. '+
+      'Nunca pare em fórmula genérica. Nunca responda N/A se a questão puder ser resolvida. '+
+      'Se for múltipla escolha, RESPOSTA deve começar com a letra correta e depois a resposta. '+
+      'Se for resposta aberta, escreva o resultado final concreto. '+
       'Use exatamente estas quatro linhas:\n'+
-      'RESPOSTA: [letra e resposta, ou resposta]\n'+
-      'VALOR: [valor numérico decimal equivalente, ou N/A]\n'+
-      'CALC: [expressão matemática que reproduz VALOR, ou N/A]\n'+
-      'EXPLICAÇÃO: [explicação bem simples em no máximo 2 frases]\n'+
-      'Em CALC use apenas números, + - * / ^, parênteses, sqrt, sin, cos, tan, asin, acos e atan. '+
-      'Trigonometria usa graus. '+
-      'Para resposta simbólica como √13: RESPOSTA pode ser A — √13 cm, VALOR deve ser aproximadamente 3.6055 e CALC deve ser sqrt(13). '+
-      'Se a questão não precisar de cálculo, use VALOR: N/A e CALC: N/A. '+
+      'RESPOSTA: [letra e resposta, ou resultado final]\n'+
+      'VALOR: [valor numérico decimal equivalente, ou N/A apenas se realmente não houver valor numérico]\n'+
+      'CALC: [expressão matemática que reproduz VALOR, ou N/A se a questão não for matemática]\n'+
+      'EXPLICAÇÃO: [explicação simples em no máximo 2 frases]\n'+
+      'Em CALC use apenas números, + - * / ^, parênteses, sqrt, sin, cos, tan, asin, acos e atan. Trigonometria usa graus. '+
+      'Para resposta simbólica como √13, mantenha √13 em RESPOSTA, use VALOR aproximadamente 3.6055 e CALC sqrt(13). '+
       'Não use LaTeX.\n\n'+
-      'QUESTÃO:\n'+q;
+      'QUESTÃO:\n'+
+      q;
 
     const ia1=
       await resolverIA(
@@ -860,12 +921,13 @@
       );
 
     if(
-      ia1.ok &&
-      ia2.ok &&
-      ia1.key===ia2.key
+      mesmaResposta(
+        ia1,
+        ia2
+      )
     ){
       const mathOK=
-        ia1.math===true ||
+        ia1.math===true||
         ia2.math===true;
 
       mostrarConfirmada(
@@ -877,7 +939,6 @@
       );
 
       btn.disabled=false;
-
       btn.textContent=
         '🔄 Atualizar';
 
@@ -902,7 +963,9 @@
       ia1,
       ia2,
       ia3
-    ].filter(x=>x.ok);
+    ].filter(
+      x=>x.ok
+    );
 
     let winner=null;
 
@@ -917,13 +980,16 @@
         j++
       ){
         if(
-          valid[i].key===
-          valid[j].key
+          mesmaResposta(
+            valid[i],
+            valid[j]
+          )
         ){
           winner=[
             valid[i],
             valid[j]
           ];
+
           break;
         }
       }
@@ -970,10 +1036,10 @@
   const obs=
     new MutationObserver(()=>{
       if(
-        window.__KHGRQ &&
+        window.__KHGRQ&&
         !document.getElementById(
           'kh-groq'
-        ) &&
+        )&&
         document.body
       ){
         document.body.appendChild(
