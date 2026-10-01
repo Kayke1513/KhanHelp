@@ -41,12 +41,10 @@
   box.append(top,res,status,btn);
   document.body.appendChild(box);
 
-  // Arrastar janela
   let drag=false,sx=0,sy=0,bx=0,by=0;
 
   top.onpointerdown=e=>{
     if(e.target===close)return;
-
     drag=true;
 
     const r=box.getBoundingClientRect();
@@ -70,21 +68,8 @@
     let x=bx+(e.clientX-sx);
     let y=by+(e.clientY-sy);
 
-    x=Math.max(
-      4,
-      Math.min(
-        x,
-        innerWidth-box.offsetWidth-4
-      )
-    );
-
-    y=Math.max(
-      4,
-      Math.min(
-        y,
-        innerHeight-box.offsetHeight-4
-      )
-    );
+    x=Math.max(4,Math.min(x,innerWidth-box.offsetWidth-4));
+    y=Math.max(4,Math.min(y,innerHeight-box.offsetHeight-4));
 
     box.style.left=x+'px';
     box.style.top=y+'px';
@@ -94,29 +79,18 @@
   top.onpointercancel=()=>drag=false;
 
   const add=(a,s,x)=>{
-    x=(x||'')
-      .replace(/\s+/g,' ')
-      .trim();
+    x=(x||'').replace(/\s+/g,' ').trim();
 
-    if(
-      x &&
-      x.length>1 &&
-      !s.has(x)
-    ){
+    if(x&&x.length>1&&!s.has(x)){
       s.add(x);
       a.push(x);
     }
   };
 
-  // Captura a questão
   function pegar(){
     const root=
-      document.querySelector(
-        '[data-testid="content-library-content-panel"]'
-      ) ||
-      document.querySelector(
-        'main,[role="main"]'
-      ) ||
+      document.querySelector('[data-testid="content-library-content-panel"]')||
+      document.querySelector('main,[role="main"]')||
       document.body;
 
     const a=[];
@@ -128,14 +102,12 @@
     );
 
     while(w.nextNode()){
-      const e=
-        w.currentNode.parentElement;
+      const e=w.currentNode.parentElement;
 
       if(
-        !e ||
-        e.closest('#kh-groq') ||
-        ['SCRIPT','STYLE','NOSCRIPT']
-          .includes(e.tagName)
+        !e||
+        e.closest('#kh-groq')||
+        ['SCRIPT','STYLE','NOSCRIPT'].includes(e.tagName)
       ){
         continue;
       }
@@ -144,7 +116,7 @@
         const c=getComputedStyle(e);
 
         if(
-          c.display==='none' ||
+          c.display==='none'||
           c.visibility==='hidden'
         ){
           continue;
@@ -165,7 +137,7 @@
       .forEach(e=>{
 
         if(
-          e.closest &&
+          e.closest&&
           e.closest('#kh-groq')
         ){
           return;
@@ -174,31 +146,23 @@
         add(
           a,
           s,
-          e.getAttribute?.('aria-label') ||
-          e.getAttribute?.('alt') ||
-          e.getAttribute?.('title') ||
+          e.getAttribute?.('aria-label')||
+          e.getAttribute?.('alt')||
+          e.getAttribute?.('title')||
           e.textContent
         );
       });
 
-    return a
-      .join('\n')
-      .slice(0,14000);
+    return a.join('\n').slice(0,14000);
   }
 
-  // Chamada para Groq
-  async function chamar(
-    model,
-    promptTxt
-  ){
-    const ctrl=
-      new AbortController();
+  async function chamar(model,promptTxt){
+    const ctrl=new AbortController();
 
-    const timer=
-      setTimeout(
-        ()=>ctrl.abort(),
-        25000
-      );
+    const timer=setTimeout(
+      ()=>ctrl.abort(),
+      25000
+    );
 
     try{
       const r=await fetch(
@@ -207,11 +171,8 @@
           method:'POST',
 
           headers:{
-            'Content-Type':
-              'application/json',
-
-            'Authorization':
-              'Bearer '+key
+            'Content-Type':'application/json',
+            'Authorization':'Bearer '+key
           },
 
           body:JSON.stringify({
@@ -225,7 +186,6 @@
             ],
 
             temperature:.1,
-
             max_completion_tokens:700
           }),
 
@@ -239,7 +199,7 @@
 
       if(!r.ok){
         const er=new Error(
-          j?.error?.message ||
+          j?.error?.message||
           ('Erro HTTP '+r.status)
         );
 
@@ -266,75 +226,64 @@
     }
   }
 
-  // Lê a resposta da IA
   function parseResposta(texto){
 
     const resposta=
       (
         texto.match(
           /RESPOSTA\s*:\s*([^\n]+)/i
-        ) || []
-      )[1]?.trim() || '';
+        )||[]
+      )[1]?.trim()||'';
 
     const valorTxt=
       (
         texto.match(
           /VALOR\s*:\s*([^\n]+)/i
-        ) || []
-      )[1]?.trim() || '';
+        )||[]
+      )[1]?.trim()||'';
 
     const calc=
       (
         texto.match(
           /CALC\s*:\s*([^\n]+)/i
-        ) || []
-      )[1]?.trim() || '';
+        )||[]
+      )[1]?.trim()||'';
 
     const explicacao=
       (
         texto.match(
           /EXPLICA[CÇ][AÃ]O\s*:\s*([\s\S]*)/i
-        ) || []
-      )[1]?.trim() || '';
+        )||[]
+      )[1]?.trim()||'';
 
     const letter=
       (
         resposta.match(
           /^\s*([A-F])\b/i
-        ) || []
-      )[1]?.toUpperCase() || '';
+        )||[]
+      )[1]?.toUpperCase()||'';
 
     let keyNorm='';
 
     if(letter){
-
-      keyNorm=
-        'L:'+letter;
-
+      keyNorm='L:'+letter;
     }else{
-
       keyNorm=
         'T:'+
         resposta
           .toLowerCase()
           .normalize('NFD')
-          .replace(
-            /[\u0300-\u036f]/g,
-            ''
-          )
+          .replace(/[\u0300-\u036f]/g,'')
           .replace(/\s+/g,'')
           .replace(/,/g,'.')
-          .replace(
-            /[^a-z0-9.+\-√]/g,
-            ''
-          )
+          .replace(/[^a-z0-9.+\-√]/g,'')
           .slice(0,80);
     }
 
     let valor=null;
 
     if(
-      valorTxt &&
+      valorTxt&&
       !/^(n\/a|na|null|vazio|nenhum)$/i
         .test(valorTxt)
     ){
@@ -364,9 +313,7 @@
     };
   }
 
-  // Calculadora interna
   function calcular(expr){
-
     if(!expr)return null;
 
     let e=
@@ -374,10 +321,7 @@
         .toLowerCase()
         .replace(/,/g,'.')
         .replace(/π/g,'pi')
-        .replace(
-          /√\s*\(/g,
-          'sqrt('
-        )
+        .replace(/√\s*\(/g,'sqrt(')
         .replace(/\^/g,'**');
 
     if(
@@ -401,7 +345,6 @@
     let check=e;
 
     for(const n of allowed){
-
       check=
         check.replace(
           new RegExp(
@@ -417,68 +360,34 @@
     }
 
     e=e
-      .replace(
-        /\bpi\b/g,
-        'Math.PI'
-      )
-      .replace(
-        /\bsqrt\b/g,
-        'Math.sqrt'
-      )
-      .replace(
-        /\bsin\s*\(/g,
-        'SIN('
-      )
-      .replace(
-        /\bcos\s*\(/g,
-        'COS('
-      )
-      .replace(
-        /\btan\s*\(/g,
-        'TAN('
-      )
-      .replace(
-        /\basin\s*\(/g,
-        'ASIN('
-      )
-      .replace(
-        /\bacos\s*\(/g,
-        'ACOS('
-      )
-      .replace(
-        /\batan\s*\(/g,
-        'ATAN('
-      );
+      .replace(/\bpi\b/g,'Math.PI')
+      .replace(/\bsqrt\b/g,'Math.sqrt')
+      .replace(/\bsin\s*\(/g,'SIN(')
+      .replace(/\bcos\s*\(/g,'COS(')
+      .replace(/\btan\s*\(/g,'TAN(')
+      .replace(/\basin\s*\(/g,'ASIN(')
+      .replace(/\bacos\s*\(/g,'ACOS(')
+      .replace(/\batan\s*\(/g,'ATAN(');
 
     const SIN=n=>
-      Math.sin(
-        n*Math.PI/180
-      );
+      Math.sin(n*Math.PI/180);
 
     const COS=n=>
-      Math.cos(
-        n*Math.PI/180
-      );
+      Math.cos(n*Math.PI/180);
 
     const TAN=n=>
-      Math.tan(
-        n*Math.PI/180
-      );
+      Math.tan(n*Math.PI/180);
 
     const ASIN=n=>
-      Math.asin(n)*
-      180/Math.PI;
+      Math.asin(n)*180/Math.PI;
 
     const ACOS=n=>
-      Math.acos(n)*
-      180/Math.PI;
+      Math.acos(n)*180/Math.PI;
 
     const ATAN=n=>
-      Math.atan(n)*
-      180/Math.PI;
+      Math.atan(n)*180/Math.PI;
 
     try{
-
       const v=
         Function(
           'SIN',
@@ -502,16 +411,13 @@
         : null;
 
     }catch{
-
       return null;
     }
   }
 
-  // Confere VALOR contra CALC
   function conferirMatematica(obj){
-
     if(
-      obj.valor==null ||
+      obj.valor==null||
       !obj.calc
     ){
       return null;
@@ -535,17 +441,15 @@
       Math.abs(
         calculado-
         obj.valor
-      ) <= tol
+      )<=tol
     );
   }
 
-  // Cada IA pode tentar 2 vezes
   async function resolverIA(
     model,
     nome,
     promptTxt
   ){
-
     let ultimo='';
 
     for(
@@ -555,7 +459,6 @@
     ){
 
       try{
-
         status.textContent=
           nome+
           ' — tentativa '+
@@ -572,7 +475,6 @@
           parseResposta(txt);
 
         if(!parsed.resposta){
-
           throw new Error(
             'resposta final vazia'
           );
@@ -583,11 +485,7 @@
             parsed
           );
 
-        // Se a conta contradiz
-        // a própria resposta,
-        // tenta novamente.
         if(math===false){
-
           ultimo=
             'a conta não bateu';
 
@@ -601,23 +499,19 @@
         };
 
       }catch(e){
-
         ultimo=
-          e?.message ||
+          e?.message||
           'erro';
 
-        // erros de chave/limite
-        // não precisam repetir
         if(
-          e?.status===401 ||
-          e?.status===403 ||
+          e?.status===401||
+          e?.status===403||
           e?.status===429
         ){
           break;
         }
 
         if(tentativa===1){
-
           await new Promise(
             r=>setTimeout(
               r,
@@ -635,23 +529,30 @@
   }
 
   function textoResultado(o){
+    if(o?.ok){
+      return o.resposta;
+    }
 
-    return o?.ok
-      ? o.resposta
-      : 'falhou';
+    return (
+      'falhou ('+
+      (
+        o?.error||
+        'erro desconhecido'
+      )+
+      ')'
+    );
   }
 
   function mostrarConfirmada(
     o,
     msg
   ){
-
     res.textContent=
       '✅ RESPOSTA CONFIRMADA: '+
       o.resposta+
       '\nEXPLICAÇÃO: '+
       (
-        o.explicacao ||
+        o.explicacao||
         'Duas IAs chegaram à mesma resposta.'
       );
 
@@ -659,7 +560,6 @@
   }
 
   async function resolver(){
-
     btn.disabled=true;
 
     btn.textContent=
@@ -673,7 +573,6 @@
     const q=pegar();
 
     if(!q){
-
       res.textContent=
         '❌ Não consegui ler a questão.';
 
@@ -715,17 +614,15 @@
         p
       );
 
-    // IA 1 + IA 2 concordaram
     if(
-      ia1.ok &&
-      ia2.ok &&
-      ia1.key===ia2.key &&
-      ia1.math!==false &&
+      ia1.ok&&
+      ia2.ok&&
+      ia1.key===ia2.key&&
+      ia1.math!==false&&
       ia2.math!==false
     ){
-
       const mathOK=
-        ia1.math===true ||
+        ia1.math===true||
         ia2.math===true;
 
       mostrarConfirmada(
@@ -743,7 +640,6 @@
       return;
     }
 
-    // Desempate
     res.textContent=
       '🤔 IA 3 está conferindo...';
 
@@ -763,7 +659,7 @@
       ia3
     ].filter(
       x=>
-        x.ok &&
+        x.ok&&
         x.math!==false
     );
 
@@ -774,18 +670,15 @@
       i<valid.length;
       i++
     ){
-
       for(
         let j=i+1;
         j<valid.length;
         j++
       ){
-
         if(
           valid[i].key===
           valid[j].key
         ){
-
           winner=[
             valid[i],
             valid[j]
@@ -799,7 +692,6 @@
     }
 
     if(winner){
-
       const mathOK=
         winner.some(
           x=>x.math===true
@@ -813,7 +705,6 @@
       );
 
     }else{
-
       res.textContent=
         '⚠️ RESPOSTA NÃO CONFIÁVEL\n'+
         'IA 1: '+
@@ -838,10 +729,10 @@
   const obs=
     new MutationObserver(()=>{
       if(
-        window.__KHGRQ &&
+        window.__KHGRQ&&
         !document.getElementById(
           'kh-groq'
-        ) &&
+        )&&
         document.body
       ){
         document.body.appendChild(
@@ -859,11 +750,8 @@
   );
 
   close.onclick=()=>{
-
     obs.disconnect();
-
     box.remove();
-
     delete window.__KHGRQ;
   };
 
