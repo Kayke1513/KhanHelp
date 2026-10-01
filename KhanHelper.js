@@ -1,5 +1,5 @@
 (() => {
-  if (window.__KH4 && document.getElementById("kh4")) return;
+  if (window.__KH5 && document.getElementById("kh5")) return;
 
   const apiKey = prompt("Cole sua chave da API Groq:");
   if (!apiKey) return;
@@ -10,109 +10,69 @@
     "openai/gpt-oss-20b"
   ];
 
-  // =========================
-  // JANELA
-  // =========================
-
   const box = document.createElement("div");
-  box.id = "kh4";
-
+  box.id = "kh5";
   box.style.cssText = `
-    position: fixed;
-    right: 8px;
-    top: 8px;
-    width: min(290px, calc(100vw - 16px));
-    z-index: 2147483647;
-    background: #fff;
-    color: #111;
-    border: 2px solid #1865f2;
-    border-radius: 12px;
-    padding: 10px;
-    font: 13px Arial;
-    box-shadow: 0 4px 18px #0006;
-    max-height: 45vh;
-    overflow: auto;
+    position:fixed;
+    right:8px;
+    top:8px;
+    width:min(290px,calc(100vw - 16px));
+    z-index:2147483647;
+    background:#fff;
+    color:#111;
+    border:2px solid #1865f2;
+    border-radius:12px;
+    padding:10px;
+    font:13px Arial;
+    box-shadow:0 4px 18px #0006;
+    max-height:45vh;
+    overflow:auto
   `;
 
   const header = document.createElement("div");
-  header.style.cssText = `
-    touch-action: none;
-    user-select: none;
-    cursor: move;
-    padding: 4px 2px;
-  `;
-
   header.innerHTML = "<b>📘 Khan Helper</b>";
+  header.style.cssText =
+    "touch-action:none;user-select:none;cursor:move;padding:4px 2px";
 
   const close = document.createElement("button");
   close.textContent = "✕";
-
-  close.style.cssText = `
-    float: right;
-    border: 0;
-    background: #eee;
-    border-radius: 6px;
-    padding: 3px 8px;
-    font-size: 15px;
-  `;
-
+  close.style.cssText =
+    "float:right;border:0;background:#eee;border-radius:6px;padding:3px 8px;font-size:15px";
   header.appendChild(close);
 
   const result = document.createElement("div");
-  result.style.cssText = `
-    margin: 9px 0;
-    white-space: pre-wrap;
-    line-height: 1.4;
-  `;
+  result.style.cssText =
+    "margin:9px 0;white-space:pre-wrap;line-height:1.4";
 
   const status = document.createElement("div");
-  status.style.cssText = `
-    font-size: 10px;
-    color: #777;
-    margin-bottom: 6px;
-  `;
+  status.style.cssText =
+    "font-size:10px;color:#777;margin-bottom:6px";
 
   const update = document.createElement("button");
   update.textContent = "🔄 Atualizar";
-
-  update.style.cssText = `
-    width: 100%;
-    padding: 9px;
-    border: 0;
-    border-radius: 8px;
-    background: #1865f2;
-    color: #fff;
-    font-weight: bold;
-    font-size: 14px;
-  `;
+  update.style.cssText =
+    "width:100%;padding:9px;border:0;border-radius:8px;background:#1865f2;color:#fff;font-weight:bold;font-size:14px";
 
   box.append(header, result, status, update);
   document.body.appendChild(box);
 
-  // =========================
-  // ARRASTAR JANELA
-  // =========================
-
+  // Arrastar janela
   let dragging = false;
-  let startX = 0;
-  let startY = 0;
-  let baseX = 0;
-  let baseY = 0;
+  let sx = 0, sy = 0, bx = 0, by = 0;
 
   header.onpointerdown = e => {
     if (e.target === close) return;
 
     dragging = true;
 
-    const rect = box.getBoundingClientRect();
+    const r = box.getBoundingClientRect();
+    sx = e.clientX;
+    sy = e.clientY;
+    bx = r.left;
+    by = r.top;
 
-    startX = e.clientX;
-    startY = e.clientY;
-    baseX = rect.left;
-    baseY = rect.top;
-
-    box.style.left = baseX + "px";
-    box.style.top = baseY + "px";
+    box.style.left = bx + "px";
+    box.style.top = by + "px";
     box.style.right = "auto";
     box.style.bottom = "auto";
 
@@ -122,18 +82,11 @@
   header.onpointermove = e => {
     if (!dragging) return;
 
-    let x = baseX + e.clientX - startX;
-    let y = baseY + e.clientY - startY;
+    let x = bx + e.clientX - sx;
+    let y = by + e.clientY - sy;
 
-    x = Math.max(
-      4,
-      Math.min(x, innerWidth - box.offsetWidth - 4)
-    );
-
-    y = Math.max(
-      4,
-      Math.min(y, innerHeight - box.offsetHeight - 4)
-    );
+    x = Math.max(4, Math.min(x, innerWidth - box.offsetWidth - 4));
+    y = Math.max(4, Math.min(y, innerHeight - box.offsetHeight - 4));
 
     box.style.left = x + "px";
     box.style.top = y + "px";
@@ -144,15 +97,9 @@
     dragging = false;
   };
 
-  // =========================
-  // PEGAR QUESTÃO
-  // =========================
-
   function getQuestion() {
     const root =
-      document.querySelector(
-        '[data-testid="content-library-content-panel"]'
-      ) ||
+      document.querySelector('[data-testid="content-library-content-panel"]') ||
       document.querySelector('main,[role="main"]') ||
       document.body;
 
@@ -163,7 +110,7 @@
         "[aria-label],[alt],[title],svg text,svg tspan,svg title,svg desc"
       )
       .forEach(el => {
-        if (el.closest?.("#kh4")) return;
+        if (el.closest?.("#kh5")) return;
 
         const value =
           el.getAttribute?.("aria-label") ||
@@ -172,35 +119,25 @@
           el.textContent ||
           "";
 
-        text += "\n" + value;
+        if (value.trim()) text += "\n" + value.trim();
       });
 
     return text.slice(0, 12000);
   }
 
-  // =========================
-  // API GROQ
-  // =========================
-
   async function callAI(model, promptText) {
     const controller = new AbortController();
-
-    const timer = setTimeout(
-      () => controller.abort(),
-      30000
-    );
+    const timer = setTimeout(() => controller.abort(), 30000);
 
     try {
       const response = await fetch(
         "https://api.groq.com/openai/v1/chat/completions",
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
             Authorization: "Bearer " + apiKey.trim()
           },
-
           body: JSON.stringify({
             model,
             messages: [
@@ -210,16 +147,16 @@
               }
             ],
             temperature: 0,
-            max_completion_tokens: 1400
+            max_completion_tokens: 1800,
+            response_format: {
+              type: "json_object"
+            }
           }),
-
           signal: controller.signal
         }
       );
 
-      const data = await response
-        .json()
-        .catch(() => ({}));
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(
@@ -237,70 +174,63 @@
         throw new Error("resposta vazia");
       }
 
-      const jsonMatch =
-        content.match(/\{[\s\S]*\}/);
-
-      if (!jsonMatch) {
-        throw new Error("JSON inválido");
-      }
-
-      return JSON.parse(jsonMatch[0]);
+      return JSON.parse(content);
     } finally {
       clearTimeout(timer);
     }
   }
 
-  // =========================
-  // NORMALIZAR RESPOSTA
-  // =========================
-
   function normalize(obj) {
-    const choice = String(
-      obj.choice || ""
-    )
-      .trim()
-      .toUpperCase();
+    const choice =
+      String(obj.choice || "").trim().toUpperCase();
 
-    const answer = String(
-      obj.answer || ""
-    ).trim();
+    const answer =
+      String(obj.answer || "").trim();
 
-    const explanation = String(
-      obj.explanation || ""
-    ).trim();
+    const explanation =
+      String(obj.explanation || "").trim();
 
-    const calc = String(
-      obj.calc || ""
-    ).trim();
+    const calc =
+      String(obj.calc || "").trim();
 
-    let key;
+    let numericAnswer = obj.numeric_answer;
 
-    if (/^[A-F]$/.test(choice)) {
-      key = "LETTER:" + choice;
+    if (
+      numericAnswer === null ||
+      numericAnswer === undefined ||
+      numericAnswer === ""
+    ) {
+      numericAnswer = null;
     } else {
-      key =
-        "ANSWER:" +
-        answer
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/\s+/g, "")
-          .replace(",", ".")
-          .replace(/[^a-z0-9.+\-√]/g, "");
+      numericAnswer = Number(
+        String(numericAnswer).replace(",", ".")
+      );
+
+      if (!Number.isFinite(numericAnswer)) {
+        numericAnswer = null;
+      }
     }
+
+    const key =
+      /^[A-F]$/.test(choice)
+        ? "LETTER:" + choice
+        : "ANSWER:" +
+          answer
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, "")
+            .replace(",", ".");
 
     return {
       choice,
       answer,
       explanation,
       calc,
+      numericAnswer,
       key
     };
   }
-
-  // =========================
-  // CALCULADORA INTERNA
-  // =========================
 
   function calculate(expression) {
     if (!expression) return null;
@@ -312,13 +242,11 @@
       .replace(/√\s*\(/g, "sqrt(")
       .replace(/\^/g, "**");
 
-    if (
-      !/^[0-9+\-*/().\s_a-z*]+$/.test(e)
-    ) {
+    if (!/^[0-9+\-*/().\s_a-z*]+$/.test(e)) {
       return null;
     }
 
-    const allowedNames = [
+    const allowed = [
       "sqrt",
       "sin",
       "cos",
@@ -331,7 +259,7 @@
 
     let check = e;
 
-    for (const name of allowedNames) {
+    for (const name of allowed) {
       check = check.replace(
         new RegExp("\\b" + name + "\\b", "g"),
         ""
@@ -352,23 +280,13 @@
       .replace(/\bacos\s*\(/g, "ACOS(")
       .replace(/\batan\s*\(/g, "ATAN(");
 
-    const SIN = n =>
-      Math.sin(n * Math.PI / 180);
+    const SIN = n => Math.sin(n * Math.PI / 180);
+    const COS = n => Math.cos(n * Math.PI / 180);
+    const TAN = n => Math.tan(n * Math.PI / 180);
 
-    const COS = n =>
-      Math.cos(n * Math.PI / 180);
-
-    const TAN = n =>
-      Math.tan(n * Math.PI / 180);
-
-    const ASIN = n =>
-      Math.asin(n) * 180 / Math.PI;
-
-    const ACOS = n =>
-      Math.acos(n) * 180 / Math.PI;
-
-    const ATAN = n =>
-      Math.atan(n) * 180 / Math.PI;
+    const ASIN = n => Math.asin(n) * 180 / Math.PI;
+    const ACOS = n => Math.acos(n) * 180 / Math.PI;
+    const ATAN = n => Math.atan(n) * 180 / Math.PI;
 
     try {
       const value = Function(
@@ -397,49 +315,31 @@
     }
   }
 
-  function getNumber(text) {
-    const match = String(text || "")
-      .replace(",", ".")
-      .match(/-?\d+(?:\.\d+)?/);
-
-    return match
-      ? Number(match[0])
-      : null;
-  }
-
-  // true = conta bate
-  // false = conta não bate
-  // null = não conseguiu conferir
-
   function verifyMath(obj) {
-    const calculated =
-      calculate(obj.calc);
-
-    const answerNumber =
-      getNumber(obj.answer);
-
     if (
-      calculated == null ||
-      answerNumber == null
+      obj.numericAnswer === null ||
+      !obj.calc
     ) {
+      return null;
+    }
+
+    const calculated = calculate(obj.calc);
+
+    if (calculated === null) {
       return null;
     }
 
     const tolerance = Math.max(
       0.05,
-      Math.abs(answerNumber) * 0.015
+      Math.abs(obj.numericAnswer) * 0.015
     );
 
     return (
       Math.abs(
-        calculated - answerNumber
+        calculated - obj.numericAnswer
       ) <= tolerance
     );
   }
-
-  // =========================
-  // TENTAR IA ATÉ 2 VEZES
-  // =========================
 
   async function solveWithRetry(
     model,
@@ -448,11 +348,7 @@
   ) {
     let lastError = "";
 
-    for (
-      let attempt = 1;
-      attempt <= 2;
-      attempt++
-    ) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         status.textContent =
           name +
@@ -460,41 +356,37 @@
           attempt +
           "/2...";
 
-        const raw = await callAI(
-          model,
-          promptText
-        );
+        const raw =
+          await callAI(model, promptText);
 
-        const response =
+        const answer =
           normalize(raw);
 
-        if (!response.answer) {
+        if (!answer.answer) {
           throw new Error(
-            "sem resposta final"
+            "resposta final vazia"
           );
         }
 
         const mathCheck =
-          verifyMath(response);
+          verifyMath(answer);
 
-        // Se a própria conta contradiz
-        // a resposta, descarta e tenta de novo.
         if (mathCheck === false) {
           lastError =
-            "a conta não bateu";
+            "a conta da IA não bateu";
 
           continue;
         }
 
         return {
           ok: true,
-          response,
+          answer,
           mathCheck
         };
 
-      } catch (error) {
+      } catch (e) {
         lastError =
-          error?.message ||
+          e?.message ||
           "erro desconhecido";
       }
     }
@@ -505,50 +397,57 @@
     };
   }
 
-  // =========================
-  // PROMPT
-  // =========================
-
   function buildPrompt(question) {
     return `
 Resolva SOMENTE a questão escolar abaixo.
 
-Faça a resolução do zero.
-
-Confira todos os números e cálculos antes de responder.
+Faça a resolução do zero e confira todos os cálculos.
 
 Não chute.
 
-Se for múltipla escolha:
-- choice deve ser apenas a letra correta.
-- answer deve conter a resposta correspondente.
+Responda SOMENTE JSON válido.
 
-Se houver um resultado numérico, forneça também uma expressão em calc que reproduza o resultado final.
-
-Na propriedade calc use somente:
-números,
-+ - * / ^,
-parênteses,
-sqrt,
-sin,
-cos,
-tan,
-asin,
-acos,
-atan.
-
-Trigonometria deve usar graus.
-
-Não use LaTeX.
-
-Responda SOMENTE JSON válido neste formato:
+Formato obrigatório:
 
 {
-  "choice": "A ou vazio",
-  "answer": "resposta final",
-  "explanation": "explicação muito simples em até 2 frases",
-  "calc": "expressão matemática ou vazio"
+  "choice": "A, B, C, D ou vazio",
+  "answer": "resposta que deve aparecer para o aluno",
+  "numeric_answer": 3.6055,
+  "explanation": "explicação muito simples em no máximo 2 frases",
+  "calc": "expressão matemática que gera numeric_answer"
 }
+
+REGRAS:
+
+1. Se a resposta for simbólica, por exemplo sqrt(13), escreva:
+   answer = "√13 cm"
+   numeric_answer = 3.6055
+   calc = "sqrt(13)"
+
+2. Se a resposta for um ângulo, por exemplo 83 graus:
+   answer = "83°"
+   numeric_answer = 83
+   calc = "asin(...)"
+
+3. Se não houver resultado numérico:
+   numeric_answer = null
+   calc = ""
+
+4. Em calc use somente:
+   números
+   + - * / ^
+   parênteses
+   sqrt
+   sin
+   cos
+   tan
+   asin
+   acos
+   atan
+
+5. Trigonometria usa graus.
+
+6. Não use LaTeX.
 
 QUESTÃO:
 
@@ -556,21 +455,12 @@ ${question}
 `;
   }
 
-  // =========================
-  // MOSTRAR RESPOSTA
-  // =========================
-
-  function showConfirmed(
-    obj,
-    message
-  ) {
-    const prefix = obj.choice
-      ? obj.choice + " — "
-      : "";
-
+  function displayAnswer(obj, message) {
     result.textContent =
       "✅ RESPOSTA CONFIRMADA: " +
-      prefix +
+      (obj.choice
+        ? obj.choice + " — "
+        : "") +
       obj.answer +
       "\n\nEXPLICAÇÃO: " +
       obj.explanation;
@@ -578,18 +468,13 @@ ${question}
     status.textContent = message;
   }
 
-  // =========================
-  // RESOLVER
-  // =========================
-
   async function solve() {
     update.disabled = true;
-
     update.textContent =
       "⏳ Analisando...";
 
     result.textContent =
-      "🤔 IA 1 e IA 2 estão resolvendo...";
+      "🤔 IA 1 e IA 2 resolvendo...";
 
     status.textContent = "";
 
@@ -609,7 +494,6 @@ ${question}
     const promptText =
       buildPrompt(question);
 
-    // IA 1
     const ia1 =
       await solveWithRetry(
         MODELS[0],
@@ -617,7 +501,6 @@ ${question}
         promptText
       );
 
-    // IA 2
     const ia2 =
       await solveWithRetry(
         MODELS[1],
@@ -625,39 +508,19 @@ ${question}
         promptText
       );
 
-    const valid = [];
-
-    if (ia1.ok) {
-      valid.push({
-        name: "IA 1",
-        ...ia1
-      });
-    }
-
-    if (ia2.ok) {
-      valid.push({
-        name: "IA 2",
-        ...ia2
-      });
-    }
-
-    // =========================
-    // IA 1 + IA 2 concordaram
-    // =========================
-
     if (
       ia1.ok &&
       ia2.ok &&
-      ia1.response.key ===
-        ia2.response.key
+      ia1.answer.key ===
+        ia2.answer.key
     ) {
-      const mathVerified =
+      const mathOK =
         ia1.mathCheck === true ||
         ia2.mathCheck === true;
 
-      showConfirmed(
-        ia1.response,
-        mathVerified
+      displayAnswer(
+        ia1.answer,
+        mathOK
           ? "✓ IA 1 e IA 2 concordaram • 🧮 conta conferida"
           : "✓ IA 1 e IA 2 concordaram"
       );
@@ -669,15 +532,8 @@ ${question}
       return;
     }
 
-    // =========================
-    // CHAMAR IA 3
-    // =========================
-
     result.textContent =
-      "🤔 Verificando com IA 3...";
-
-    status.textContent =
-      "IA 1 e IA 2 não confirmaram a mesma resposta.";
+      "🤔 Consultando IA 3...";
 
     const ia3 =
       await solveWithRetry(
@@ -686,32 +542,23 @@ ${question}
         promptText
       );
 
-    if (ia3.ok) {
-      valid.push({
-        name: "IA 3",
-        ...ia3
-      });
-    }
+    const valid = [];
 
-    // =========================
-    // PROCURAR 2 RESPOSTAS IGUAIS
-    // =========================
+    if (ia1.ok) valid.push(ia1);
+    if (ia2.ok) valid.push(ia2);
+    if (ia3.ok) valid.push(ia3);
 
     let winner = null;
 
-    for (
-      let i = 0;
-      i < valid.length;
-      i++
-    ) {
+    for (let i = 0; i < valid.length; i++) {
       for (
         let j = i + 1;
         j < valid.length;
         j++
       ) {
         if (
-          valid[i].response.key ===
-          valid[j].response.key
+          valid[i].answer.key ===
+          valid[j].answer.key
         ) {
           winner = [
             valid[i],
@@ -726,61 +573,40 @@ ${question}
     }
 
     if (winner) {
-      const obj =
-        winner[0].response;
-
-      const mathVerified =
+      const mathOK =
         winner.some(
           item =>
             item.mathCheck === true
         );
 
-      showConfirmed(
-        obj,
-        mathVerified
+      displayAnswer(
+        winner[0].answer,
+        mathOK
           ? "✓ Pelo menos 2 IAs concordaram • 🧮 conta conferida"
           : "✓ Pelo menos 2 IAs concordaram"
       );
 
     } else {
-      const text1 = ia1.ok
-        ? (
-            ia1.response.choice
-              ? ia1.response.choice +
-                " — "
-              : ""
-          ) +
-          ia1.response.answer
-        : "falhou";
+      const show = item => {
+        if (!item.ok) return "falhou";
 
-      const text2 = ia2.ok
-        ? (
-            ia2.response.choice
-              ? ia2.response.choice +
-                " — "
-              : ""
-          ) +
-          ia2.response.answer
-        : "falhou";
-
-      const text3 = ia3.ok
-        ? (
-            ia3.response.choice
-              ? ia3.response.choice +
-                " — "
-              : ""
-          ) +
-          ia3.response.answer
-        : "falhou";
+        return (
+          (item.answer.choice
+            ? item.answer.choice +
+              " — "
+            : "") +
+          item.answer.answer
+        );
+      };
 
       result.textContent =
         "⚠️ RESPOSTA NÃO CONFIÁVEL" +
         "\n\nIA 1: " +
-        text1 +
+        show(ia1) +
         "\nIA 2: " +
-        text2 +
+        show(ia2) +
         "\nIA 3: " +
-        text3;
+        show(ia3);
 
       status.textContent =
         "Não consegui obter duas respostas confiáveis iguais.";
@@ -796,10 +622,10 @@ ${question}
 
   close.onclick = () => {
     box.remove();
-    delete window.__KH4;
+    delete window.__KH5;
   };
 
-  window.__KH4 = true;
+  window.__KH5 = true;
 
   solve();
 })();
