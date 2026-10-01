@@ -46,31 +46,24 @@
   top.onpointerdown=e=>{
     if(e.target===close)return;
     drag=true;
-
     const r=box.getBoundingClientRect();
-
     sx=e.clientX;
     sy=e.clientY;
     bx=r.left;
     by=r.top;
-
     box.style.left=bx+'px';
     box.style.top=by+'px';
     box.style.right='auto';
     box.style.bottom='auto';
-
     top.setPointerCapture?.(e.pointerId);
   };
 
   top.onpointermove=e=>{
     if(!drag)return;
-
     let x=bx+(e.clientX-sx);
     let y=by+(e.clientY-sy);
-
     x=Math.max(4,Math.min(x,innerWidth-box.offsetWidth-4));
     y=Math.max(4,Math.min(y,innerHeight-box.offsetHeight-4));
-
     box.style.left=x+'px';
     box.style.top=y+'px';
   };
@@ -123,11 +116,7 @@
         }
       }catch{}
 
-      add(
-        a,
-        s,
-        w.currentNode.textContent
-      );
+      add(a,s,w.currentNode.textContent);
     }
 
     root
@@ -161,10 +150,33 @@
 
     const timer=setTimeout(
       ()=>ctrl.abort(),
-      25000
+      35000
     );
 
     try{
+      const body={
+        model:model,
+
+        messages:[
+          {
+            role:'user',
+            content:promptTxt
+          }
+        ],
+
+        max_completion_tokens:2200
+      };
+
+      if(model.includes('qwen')){
+        body.temperature=0.2;
+        body.reasoning_effort='medium';
+        body.reasoning_format='hidden';
+      }else{
+        body.temperature=0.2;
+        body.reasoning_effort='low';
+        body.include_reasoning=false;
+      }
+
       const r=await fetch(
         'https://api.groq.com/openai/v1/chat/completions',
         {
@@ -175,19 +187,7 @@
             'Authorization':'Bearer '+key
           },
 
-          body:JSON.stringify({
-            model,
-
-            messages:[
-              {
-                role:'user',
-                content:promptTxt
-              }
-            ],
-
-            temperature:.1,
-            max_completion_tokens:700
-          }),
+          body:JSON.stringify(body),
 
           signal:ctrl.signal
         }
@@ -215,7 +215,7 @@
 
       if(!t){
         throw new Error(
-          'A IA não devolveu resposta.'
+          'resposta vazia do modelo'
         );
       }
 
@@ -529,9 +529,7 @@
   }
 
   function textoResultado(o){
-    if(o?.ok){
-      return o.resposta;
-    }
+    if(o?.ok)return o.resposta;
 
     return (
       'falhou ('+
