@@ -16,7 +16,7 @@
 
   const box=document.createElement('div');
   box.id='kh-groq';
-  box.style='position:fixed;right:8px;top:8px;width:min(290px,calc(100vw - 16px));z-index:2147483647;background:#fff;color:#111;border:2px solid #1865f2;border-radius:12px;padding:10px;font:13px Arial;box-shadow:0 4px 18px #0006;max-height:43vh;overflow:auto';
+  box.style='position:fixed;right:8px;top:8px;width:min(290px,calc(100vw - 16px));z-index:2147483647;background:#fff;color:#111;border:2px solid #1865f2;border-radius:12px;padding:10px;font:13px Arial;box-shadow:0 4px 18px #0006;max-height:45vh;overflow:auto';
 
   const top=document.createElement('div');
   top.innerHTML='<b>📘 Khan Helper</b>';
@@ -41,29 +41,54 @@
   box.append(top,res,status,btn);
   document.body.appendChild(box);
 
+  // =========================
+  // ARRASTAR
+  // =========================
+
   let drag=false,sx=0,sy=0,bx=0,by=0;
 
   top.onpointerdown=e=>{
     if(e.target===close)return;
+
     drag=true;
+
     const r=box.getBoundingClientRect();
+
     sx=e.clientX;
     sy=e.clientY;
     bx=r.left;
     by=r.top;
+
     box.style.left=bx+'px';
     box.style.top=by+'px';
     box.style.right='auto';
     box.style.bottom='auto';
+
     top.setPointerCapture?.(e.pointerId);
   };
 
   top.onpointermove=e=>{
     if(!drag)return;
-    let x=bx+(e.clientX-sx);
-    let y=by+(e.clientY-sy);
-    x=Math.max(4,Math.min(x,innerWidth-box.offsetWidth-4));
-    y=Math.max(4,Math.min(y,innerHeight-box.offsetHeight-4));
+
+    let x=bx+e.clientX-sx;
+    let y=by+e.clientY-sy;
+
+    x=Math.max(
+      4,
+      Math.min(
+        x,
+        innerWidth-box.offsetWidth-4
+      )
+    );
+
+    y=Math.max(
+      4,
+      Math.min(
+        y,
+        innerHeight-box.offsetHeight-4
+      )
+    );
+
     box.style.left=x+'px';
     box.style.top=y+'px';
   };
@@ -71,10 +96,20 @@
   top.onpointerup=
   top.onpointercancel=()=>drag=false;
 
-  const add=(a,s,x)=>{
-    x=(x||'').replace(/\s+/g,' ').trim();
+  // =========================
+  // CAPTURA
+  // =========================
 
-    if(x&&x.length>1&&!s.has(x)){
+  const add=(a,s,x)=>{
+    x=(x||'')
+      .replace(/\s+/g,' ')
+      .trim();
+
+    if(
+      x &&
+      x.length>1 &&
+      !s.has(x)
+    ){
       s.add(x);
       a.push(x);
     }
@@ -82,12 +117,16 @@
 
   function pegar(){
     const root=
-      document.querySelector('[data-testid="content-library-content-panel"]')||
-      document.querySelector('main,[role="main"]')||
+      document.querySelector(
+        '[data-testid="content-library-content-panel"]'
+      )||
+      document.querySelector(
+        'main,[role="main"]'
+      )||
       document.body;
 
     const a=[];
-    const s=new Set();
+    const seen=new Set();
 
     const w=document.createTreeWalker(
       root,
@@ -98,9 +137,10 @@
       const e=w.currentNode.parentElement;
 
       if(
-        !e||
-        e.closest('#kh-groq')||
-        ['SCRIPT','STYLE','NOSCRIPT'].includes(e.tagName)
+        !e ||
+        e.closest('#kh-groq') ||
+        ['SCRIPT','STYLE','NOSCRIPT']
+          .includes(e.tagName)
       ){
         continue;
       }
@@ -109,14 +149,18 @@
         const c=getComputedStyle(e);
 
         if(
-          c.display==='none'||
+          c.display==='none' ||
           c.visibility==='hidden'
         ){
           continue;
         }
       }catch{}
 
-      add(a,s,w.currentNode.textContent);
+      add(
+        a,
+        seen,
+        w.currentNode.textContent
+      );
     }
 
     root
@@ -126,7 +170,7 @@
       .forEach(e=>{
 
         if(
-          e.closest&&
+          e.closest &&
           e.closest('#kh-groq')
         ){
           return;
@@ -134,7 +178,7 @@
 
         add(
           a,
-          s,
+          seen,
           e.getAttribute?.('aria-label')||
           e.getAttribute?.('alt')||
           e.getAttribute?.('title')||
@@ -142,16 +186,133 @@
         );
       });
 
-    return a.join('\n').slice(0,14000);
+    return a
+      .join('\n')
+      .slice(0,14000);
   }
 
-  async function chamar(model,promptTxt){
-    const ctrl=new AbortController();
+  // =========================
+  // ALTERNATIVAS
+  // =========================
 
-    const timer=setTimeout(
-      ()=>ctrl.abort(),
-      35000
-    );
+  function canon(t){
+    return String(t||'')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .replace(/√/g,'sqrt')
+      .replace(/\\sqrt/g,'sqrt')
+      .replace(/,/g,'.')
+      .replace(/\s+/g,'')
+      .replace(/[^a-z0-9.+\-*/=]/g,'');
+  }
+
+  function alternativas(texto){
+    const linhas=texto
+      .split('\n')
+      .map(x=>x.trim())
+      .filter(Boolean);
+
+    const mapa={};
+
+    for(let i=0;i<linhas.length;i++){
+
+      const m=
+        linhas[i].match(
+          /^([A-F])$/
+        );
+
+      if(!m)continue;
+
+      const letra=m[1];
+
+      const partes=[];
+
+      for(
+        let j=i+1;
+        j<linhas.length &&
+        j<=i+4;
+        j++
+      ){
+        if(/^[A-F]$/.test(linhas[j])){
+          break;
+        }
+
+        if(
+          /^(verificar|pular|relatar|dicas|escolha)/i
+            .test(linhas[j])
+        ){
+          break;
+        }
+
+        partes.push(linhas[j]);
+      }
+
+      if(partes.length){
+        mapa[letra]=
+          partes.join(' ');
+      }
+    }
+
+    return mapa;
+  }
+
+  function inferirLetra(
+    resposta,
+    mapa
+  ){
+    const direta=
+      String(resposta||'')
+        .match(/^\s*([A-F])\b/i);
+
+    if(direta){
+      return direta[1]
+        .toUpperCase();
+    }
+
+    const a=canon(resposta);
+
+    if(a.length<2){
+      return '';
+    }
+
+    for(
+      const [letra,texto]
+      of Object.entries(mapa)
+    ){
+      const b=canon(texto);
+
+      if(
+        a.length>=2 &&
+        b.length>=2 &&
+        (
+          b.includes(a) ||
+          a.includes(b)
+        )
+      ){
+        return letra;
+      }
+    }
+
+    return '';
+  }
+
+  // =========================
+  // GROQ
+  // =========================
+
+  async function chamar(
+    model,
+    promptTxt
+  ){
+    const ctrl=
+      new AbortController();
+
+    const timer=
+      setTimeout(
+        ()=>ctrl.abort(),
+        35000
+      );
 
     try{
       const body={
@@ -164,15 +325,18 @@
           }
         ],
 
-        max_completion_tokens:2200
+        max_completion_tokens:
+          model.includes('qwen')
+            ? 500
+            : 900
       };
 
       if(model.includes('qwen')){
-        body.temperature=0.2;
-        body.reasoning_effort='medium';
+        body.temperature=.2;
+        body.reasoning_effort='low';
         body.reasoning_format='hidden';
       }else{
-        body.temperature=0.2;
+        body.temperature=.2;
         body.reasoning_effort='low';
         body.include_reasoning=false;
       }
@@ -183,8 +347,11 @@
           method:'POST',
 
           headers:{
-            'Content-Type':'application/json',
-            'Authorization':'Bearer '+key
+            'Content-Type':
+              'application/json',
+
+            'Authorization':
+              'Bearer '+key
           },
 
           body:JSON.stringify(body),
@@ -198,12 +365,19 @@
         .catch(()=>({}));
 
       if(!r.ok){
-        const er=new Error(
-          j?.error?.message||
-          ('Erro HTTP '+r.status)
-        );
+        const msg=
+          j?.error?.message ||
+          ('Erro HTTP '+r.status);
+
+        const er=
+          new Error(msg);
 
         er.status=r.status;
+
+        if(r.status===429){
+          er.rate=true;
+        }
+
         throw er;
       }
 
@@ -215,7 +389,7 @@
 
       if(!t){
         throw new Error(
-          'resposta vazia do modelo'
+          'resposta vazia'
         );
       }
 
@@ -226,64 +400,52 @@
     }
   }
 
-  function parseResposta(texto){
+  // =========================
+  // PARSE
+  // =========================
 
+  function parseResposta(
+    texto,
+    mapa
+  ){
     const resposta=
       (
         texto.match(
           /RESPOSTA\s*:\s*([^\n]+)/i
         )||[]
-      )[1]?.trim()||'';
+      )[1]?.trim() || '';
 
     const valorTxt=
       (
         texto.match(
           /VALOR\s*:\s*([^\n]+)/i
         )||[]
-      )[1]?.trim()||'';
+      )[1]?.trim() || '';
 
     const calc=
       (
         texto.match(
           /CALC\s*:\s*([^\n]+)/i
         )||[]
-      )[1]?.trim()||'';
+      )[1]?.trim() || '';
 
     const explicacao=
       (
         texto.match(
           /EXPLICA[CÇ][AÃ]O\s*:\s*([\s\S]*)/i
         )||[]
-      )[1]?.trim()||'';
+      )[1]?.trim() || '';
 
-    const letter=
-      (
-        resposta.match(
-          /^\s*([A-F])\b/i
-        )||[]
-      )[1]?.toUpperCase()||'';
-
-    let keyNorm='';
-
-    if(letter){
-      keyNorm='L:'+letter;
-    }else{
-      keyNorm=
-        'T:'+
-        resposta
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g,'')
-          .replace(/\s+/g,'')
-          .replace(/,/g,'.')
-          .replace(/[^a-z0-9.+\-√]/g,'')
-          .slice(0,80);
-    }
+    const letra=
+      inferirLetra(
+        resposta,
+        mapa
+      );
 
     let valor=null;
 
     if(
-      valorTxt&&
+      valorTxt &&
       !/^(n\/a|na|null|vazio|nenhum)$/i
         .test(valorTxt)
     ){
@@ -303,8 +465,21 @@
       }
     }
 
+    let keyNorm='';
+
+    if(letra){
+      keyNorm=
+        'L:'+letra;
+    }else{
+      keyNorm=
+        'T:'+
+        canon(resposta)
+          .slice(0,100);
+    }
+
     return {
       resposta,
+      letra,
       valor,
       calc,
       explicacao,
@@ -312,6 +487,10 @@
       raw:texto
     };
   }
+
+  // =========================
+  // CALCULADORA
+  // =========================
 
   function calcular(expr){
     if(!expr)return null;
@@ -321,7 +500,10 @@
         .toLowerCase()
         .replace(/,/g,'.')
         .replace(/π/g,'pi')
-        .replace(/√\s*\(/g,'sqrt(')
+        .replace(
+          /√\s*\(/g,
+          'sqrt('
+        )
         .replace(/\^/g,'**');
 
     if(
@@ -360,32 +542,65 @@
     }
 
     e=e
-      .replace(/\bpi\b/g,'Math.PI')
-      .replace(/\bsqrt\b/g,'Math.sqrt')
-      .replace(/\bsin\s*\(/g,'SIN(')
-      .replace(/\bcos\s*\(/g,'COS(')
-      .replace(/\btan\s*\(/g,'TAN(')
-      .replace(/\basin\s*\(/g,'ASIN(')
-      .replace(/\bacos\s*\(/g,'ACOS(')
-      .replace(/\batan\s*\(/g,'ATAN(');
+      .replace(
+        /\bpi\b/g,
+        'Math.PI'
+      )
+      .replace(
+        /\bsqrt\b/g,
+        'Math.sqrt'
+      )
+      .replace(
+        /\bsin\s*\(/g,
+        'SIN('
+      )
+      .replace(
+        /\bcos\s*\(/g,
+        'COS('
+      )
+      .replace(
+        /\btan\s*\(/g,
+        'TAN('
+      )
+      .replace(
+        /\basin\s*\(/g,
+        'ASIN('
+      )
+      .replace(
+        /\bacos\s*\(/g,
+        'ACOS('
+      )
+      .replace(
+        /\batan\s*\(/g,
+        'ATAN('
+      );
 
     const SIN=n=>
-      Math.sin(n*Math.PI/180);
+      Math.sin(
+        n*Math.PI/180
+      );
 
     const COS=n=>
-      Math.cos(n*Math.PI/180);
+      Math.cos(
+        n*Math.PI/180
+      );
 
     const TAN=n=>
-      Math.tan(n*Math.PI/180);
+      Math.tan(
+        n*Math.PI/180
+      );
 
     const ASIN=n=>
-      Math.asin(n)*180/Math.PI;
+      Math.asin(n)*
+      180/Math.PI;
 
     const ACOS=n=>
-      Math.acos(n)*180/Math.PI;
+      Math.acos(n)*
+      180/Math.PI;
 
     const ATAN=n=>
-      Math.atan(n)*180/Math.PI;
+      Math.atan(n)*
+      180/Math.PI;
 
     try{
       const v=
@@ -415,16 +630,17 @@
     }
   }
 
-  function conferirMatematica(obj){
+  function conferirMatematica(o){
     if(
-      obj.valor==null||
-      !obj.calc
+      o.valor==null ||
+      !o.calc ||
+      /^(n\/a|na)$/i.test(o.calc)
     ){
       return null;
     }
 
     const calculado=
-      calcular(obj.calc);
+      calcular(o.calc);
 
     if(calculado==null){
       return null;
@@ -433,22 +649,26 @@
     const tol=
       Math.max(
         .05,
-        Math.abs(obj.valor)*
+        Math.abs(o.valor)*
         .015
       );
 
     return (
       Math.abs(
-        calculado-
-        obj.valor
+        calculado-o.valor
       )<=tol
     );
   }
 
+  // =========================
+  // TENTATIVAS
+  // =========================
+
   async function resolverIA(
     model,
     nome,
-    promptTxt
+    promptTxt,
+    mapa
   ){
     let ultimo='';
 
@@ -472,7 +692,10 @@
           );
 
         const parsed=
-          parseResposta(txt);
+          parseResposta(
+            txt,
+            mapa
+          );
 
         if(!parsed.resposta){
           throw new Error(
@@ -499,24 +722,29 @@
         };
 
       }catch(e){
+
+        if(e?.rate){
+          return {
+            ok:false,
+            rate:true,
+            error:'limite temporário da API'
+          };
+        }
+
         ultimo=
-          e?.message||
+          e?.message ||
           'erro';
 
         if(
-          e?.status===401||
-          e?.status===403||
-          e?.status===429
+          e?.status===401 ||
+          e?.status===403
         ){
           break;
         }
 
         if(tentativa===1){
           await new Promise(
-            r=>setTimeout(
-              r,
-              500
-            )
+            r=>setTimeout(r,500)
           );
         }
       }
@@ -529,33 +757,76 @@
   }
 
   function textoResultado(o){
-    if(o?.ok)return o.resposta;
+    if(o?.ok){
+      return o.resposta;
+    }
+
+    if(o?.rate){
+      return 'limite temporário';
+    }
 
     return (
       'falhou ('+
       (
-        o?.error||
+        o?.error ||
         'erro desconhecido'
       )+
       ')'
     );
   }
 
+  function respostaBonita(
+    o,
+    mapa
+  ){
+    if(
+      o.letra &&
+      mapa[o.letra]
+    ){
+      const txt=
+        mapa[o.letra];
+
+      const cr=canon(o.resposta);
+      const ct=canon(txt);
+
+      if(
+        cr===canon(o.letra) ||
+        cr.length<=2
+      ){
+        return (
+          o.letra+
+          ' — '+
+          txt
+        );
+      }
+    }
+
+    return o.resposta;
+  }
+
   function mostrarConfirmada(
     o,
+    mapa,
     msg
   ){
     res.textContent=
       '✅ RESPOSTA CONFIRMADA: '+
-      o.resposta+
+      respostaBonita(
+        o,
+        mapa
+      )+
       '\nEXPLICAÇÃO: '+
       (
-        o.explicacao||
+        o.explicacao ||
         'Duas IAs chegaram à mesma resposta.'
       );
 
     status.textContent=msg;
   }
+
+  // =========================
+  // PRINCIPAL
+  // =========================
 
   async function resolver(){
     btn.disabled=true;
@@ -582,49 +853,58 @@
       return;
     }
 
+    const mapa=
+      alternativas(q);
+
     const p=
       'Resolva SOMENTE a questão escolar atual abaixo. '+
-      'Leia descrições de figuras, gráficos, fórmulas e alternativas. '+
-      'Faça a conta com cuidado e confira antes de responder. '+
+      'Pode ser matemática, ciências, português, história ou qualquer outra matéria. '+
+      'Leia também descrições de imagens, gráficos, fórmulas e alternativas. '+
+      'Faça os cálculos quando forem necessários e confira antes de responder. '+
       'Não chute. '+
-      'Responda em português muito simples. '+
+      'Se for múltipla escolha, RESPOSTA deve começar com a letra da alternativa e depois a resposta. '+
+      'Se não for múltipla escolha, escreva somente a resposta. '+
       'Use exatamente estas quatro linhas:\n'+
-      'RESPOSTA: [letra e resposta, ou somente a resposta]\n'+
-      'VALOR: [valor numérico decimal equivalente ao resultado, ou N/A se não houver]\n'+
-      'CALC: [uma expressão simples que reproduza VALOR usando números, + - * / ^, parênteses, sqrt, sin, cos, tan, asin, acos, atan; ou N/A]\n'+
-      'EXPLICAÇÃO: [explicação simples em no máximo 2 frases]\n'+
-      'Importante: se a resposta for simbólica como √13, em RESPOSTA mantenha √13, em VALOR coloque aproximadamente 3.6055 e em CALC use sqrt(13). '+
-      'Trigonometria em graus. Não use LaTeX.\n\n'+
-      'QUESTÃO:\n'+
-      q;
+      'RESPOSTA: [letra e resposta, ou resposta]\n'+
+      'VALOR: [valor numérico decimal equivalente, ou N/A]\n'+
+      'CALC: [expressão matemática que reproduz VALOR, ou N/A]\n'+
+      'EXPLICAÇÃO: [explicação bem simples em no máximo 2 frases]\n'+
+      'Em CALC use apenas números, + - * / ^, parênteses, sqrt, sin, cos, tan, asin, acos e atan. '+
+      'Trigonometria usa graus. '+
+      'Para resposta simbólica como √13: RESPOSTA pode ser A — √13 cm, VALOR deve ser aproximadamente 3.6055 e CALC deve ser sqrt(13). '+
+      'Se a questão não precisar de cálculo, use VALOR: N/A e CALC: N/A. '+
+      'Não use LaTeX.\n\n'+
+      'QUESTÃO:\n'+q;
 
     const ia1=
       await resolverIA(
         MODELS[0],
         'IA 1',
-        p
+        p,
+        mapa
       );
 
     const ia2=
       await resolverIA(
         MODELS[1],
         'IA 2',
-        p
+        p,
+        mapa
       );
 
+    // IA 1 + IA 2 concordaram
     if(
-      ia1.ok&&
-      ia2.ok&&
-      ia1.key===ia2.key&&
-      ia1.math!==false&&
-      ia2.math!==false
+      ia1.ok &&
+      ia2.ok &&
+      ia1.key===ia2.key
     ){
       const mathOK=
-        ia1.math===true||
+        ia1.math===true ||
         ia2.math===true;
 
       mostrarConfirmada(
         ia1,
+        mapa,
         mathOK
           ? '✓ IA 1 e IA 2 concordaram • 🧮 conta conferida'
           : '✓ IA 1 e IA 2 concordaram'
@@ -638,6 +918,7 @@
       return;
     }
 
+    // IA 3
     res.textContent=
       '🤔 IA 3 está conferindo...';
 
@@ -648,18 +929,15 @@
       await resolverIA(
         MODELS[2],
         'IA 3',
-        p
+        p,
+        mapa
       );
 
     const valid=[
       ia1,
       ia2,
       ia3
-    ].filter(
-      x=>
-        x.ok&&
-        x.math!==false
-    );
+    ].filter(x=>x.ok);
 
     let winner=null;
 
@@ -681,7 +959,6 @@
             valid[i],
             valid[j]
           ];
-
           break;
         }
       }
@@ -697,6 +974,7 @@
 
       mostrarConfirmada(
         winner[0],
+        mapa,
         mathOK
           ? '✓ Pelo menos 2 IAs concordaram • 🧮 conta conferida'
           : '✓ Pelo menos 2 IAs concordaram'
@@ -713,7 +991,7 @@
         textoResultado(ia3);
 
       status.textContent=
-        'Não consegui obter duas respostas confiáveis iguais.';
+        'Não consegui confirmar a mesma resposta com pelo menos 2 IAs.';
     }
 
     btn.disabled=false;
@@ -727,10 +1005,10 @@
   const obs=
     new MutationObserver(()=>{
       if(
-        window.__KHGRQ&&
+        window.__KHGRQ &&
         !document.getElementById(
           'kh-groq'
-        )&&
+        ) &&
         document.body
       ){
         document.body.appendChild(
